@@ -71,19 +71,31 @@ function openCollaboratorFolder(i){
 }
 window.collaborators=collaborators;
 const HAPPY_KEY="gamos_happy_box_v1";
+const HAPPY_ORDERS_KEY="gamos_happy_orders_v2";
+function getHappyOrders(){const x=JSON.parse(localStorage.getItem(HAPPY_ORDERS_KEY)||"[]");return Array.isArray(x)?x:[]}
+function saveHappyOrders(x){localStorage.setItem(HAPPY_ORDERS_KEY,JSON.stringify(x))}
 function happyBox(){
   let h='<button class="back" id="happyBack">← ΜΕΝΟΥ</button><h2>🎁 HAPPY BOX</h2>';
-  h+='<button class="primary big" id="deliveryOrders">📦 ΠΑΡΑΓΓΕΛΙΕΣ ΓΙΑ ΠΑΡΑΔΟΣΗ</button>';
+  h+='<button class="primary big" id="newDeliveryOrder">＋ ΠΑΡΑΓΓΕΛΙΑ ΓΙΑ ΠΑΡΑΔΟΣΗ</button>';
+  const orders=getHappyOrders();
+  if(orders.length) h+='<div class="folder-list">'+orders.map((o,i)=>'<button type="button" class="menu-item happy-order" data-i="'+i+'">📦 '+esc(o.title)+'</button>').join("")+'</div>';
+  else h+='<p class="empty-state">Δεν υπάρχουν ακόμη παραγγελίες.</p>';
   $("detailMount").innerHTML=h; show("detailView");
   $("happyBack").onclick=()=>show("homeView");
-  $("deliveryOrders").onclick=()=>openHappyPage();
+  $("newDeliveryOrder").onclick=()=>newHappyOrder();
+  document.querySelectorAll(".happy-order").forEach(b=>b.onclick=()=>openHappyOrder(Number(b.dataset.i)));
 }
-function openHappyPage(){
-  const d=JSON.parse(localStorage.getItem(HAPPY_KEY)||'{"notes":""}');
-  $("detailMount").innerHTML='<button class="back" id="happyPageBack">← HAPPY BOX</button><h2>📦 ΠΑΡΑΓΓΕΛΙΕΣ ΓΙΑ ΠΑΡΑΔΟΣΗ</h2><div class="collab-editor"><textarea id="happyNotes" placeholder="Γράψε εδώ ό,τι θέλεις και όσα θέλεις...">'+esc(d.notes||"")+'</textarea></div><button class="primary" id="saveHappy">💾 ΑΠΟΘΗΚΕΥΣΗ</button>';
-  show("detailView");
-  $("happyPageBack").onclick=()=>happyBox();
-  $("saveHappy").onclick=()=>{localStorage.setItem(HAPPY_KEY,JSON.stringify({notes:$("happyNotes").value}));alert("Αποθηκεύτηκε.");};
+function newHappyOrder(){
+  $("detailMount").innerHTML='<button class="back" id="happyOrderBack">← HAPPY BOX</button><h2>＋ ΠΑΡΑΓΓΕΛΙΑ ΓΙΑ ΠΑΡΑΔΟΣΗ</h2><div class="collab-editor"><label class="collab-label">ΟΝΟΜΑ / ΤΙΤΛΟΣ ΠΑΡΑΓΓΕΛΙΑΣ</label><input id="happyOrderTitle" class="collab-name" type="text" placeholder="π.χ. Μαρία Παπαδοπούλου"><label class="collab-label">ΣΤΟΙΧΕΙΑ ΠΑΡΑΓΓΕΛΙΑΣ</label><textarea id="happyOrderNotes" placeholder="Γράψε εδώ ό,τι θέλεις και όσα θέλεις..."></textarea></div><button class="primary" id="saveHappyOrder">💾 ΑΠΟΘΗΚΕΥΣΗ</button>';
+  show("detailView"); $("happyOrderBack").onclick=()=>happyBox();
+  $("saveHappyOrder").onclick=()=>{const title=$("happyOrderTitle").value.trim();if(!title){alert("Γράψε ένα όνομα/τίτλο για την παραγγελία.");return}const x=getHappyOrders();x.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),title,notes:$("happyOrderNotes").value});saveHappyOrders(x);happyBox()};
+}
+function openHappyOrder(i){
+  const x=getHappyOrders()[i];if(!x)return;
+  $("detailMount").innerHTML='<button class="back" id="happyOrderBack">← HAPPY BOX</button><h2>📦 '+esc(x.title)+'</h2><div class="collab-editor"><textarea id="happyOrderNotes">'+esc(x.notes||"")+'</textarea></div><button class="primary" id="saveHappyOrder">💾 ΑΠΟΘΗΚΕΥΣΗ</button><button class="danger" id="deleteHappyOrder">🗑️ ΔΙΑΓΡΑΦΗ</button>';
+  show("detailView"); $("happyOrderBack").onclick=()=>happyBox();
+  $("saveHappyOrder").onclick=()=>{const a=getHappyOrders();a[i].notes=$("happyOrderNotes").value;saveHappyOrders(a);happyBox()};
+  $("deleteHappyOrder").onclick=()=>{if(confirm("Να διαγραφεί η παραγγελία;")){const a=getHappyOrders();a.splice(i,1);saveHappyOrders(a);happyBox()}};
 }
 window.happyBox=happyBox;
 function ensureHappyMenu(){
