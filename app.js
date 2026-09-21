@@ -47,16 +47,17 @@ function renderCollaboratorFolders(folders){
   });
 }
 function newCollaboratorFolder(){
-  $("detailMount").innerHTML='<button class="back" id="newFolderBack">← ΣΥΝΕΡΓΑΤΕΣ</button><h2>📁 ΝΕΟΣ ΦΑΚΕΛΟΣ</h2><div class="collab-editor"><label class="collab-label">ΟΝΟΜΑ ΦΑΚΕΛΟΥ</label><input id="newFolderName" class="collab-name" type="text" placeholder="Γράψε ό,τι θέλεις..."><label class="collab-label">ΠΕΡΙΕΧΟΜΕΝΟ</label><textarea id="newFolderNotes" placeholder="Γράψε εδώ ό,τι θέλεις..."></textarea></div><button class="primary" id="saveNewFolder">💾 ΑΠΟΘΗΚΕΥΣΗ ΦΑΚΕΛΟΥ</button>';
+  $("detailMount").innerHTML='<button class="back" id="newFolderBack">← ΣΥΝΕΡΓΑΤΕΣ</button><h2>📁 ΝΕΟΣ ΦΑΚΕΛΟΣ</h2><div class="collab-editor"><label class="collab-label">ΟΝΟΜΑ ΦΑΚΕΛΟΥ</label><input id="newFolderName" class="collab-name" type="text" placeholder="Γράψε το όνομα του φακέλου..."></div><button class="primary" id="saveNewFolder">＋ ΔΗΜΙΟΥΡΓΙΑ ΦΑΚΕΛΟΥ</button>';
   show("detailView");
   $("newFolderBack").onclick=()=>collaborators();
   $("saveNewFolder").onclick=()=>{
     const name=$("newFolderName").value.trim();
     if(!name){alert("Γράψε το όνομα του φακέλου.");return}
     const folders=JSON.parse(localStorage.getItem(COLLAB_KEY)||"[]");
-    folders.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),name,notes:$("newFolderNotes").value});
+    const folder={id:Date.now().toString(36)+Math.random().toString(36).slice(2),name,notes:""};
+    folders.push(folder);
     localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));
-    collaborators();
+    openCollaboratorFolder(folders.length-1);
   };
   $("newFolderName").focus();
 }
