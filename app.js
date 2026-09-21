@@ -88,9 +88,14 @@ function openHappyPage(){
 window.happyBox=happyBox;
 function ensureHappyMenu(){
  const menu=document.getElementById("sideMenu"); if(!menu)return;
- if(document.getElementById("happyBoxMenuBtn"))return;
- const b=document.createElement("button"); b.id="happyBoxMenuBtn"; b.className="menu-item"; b.type="button"; b.textContent="🎁 HAPPY BOX"; b.onclick=()=>{menu.classList.add("hidden");happyBox()};
- const collab=menu.querySelector("#collaboratorsBtn"); if(collab&&collab.parentNode)collab.parentNode.insertBefore(b,collab.nextSibling);else menu.appendChild(b);
+ const existing=document.getElementById("happyBoxBtn");
+ if(existing){
+   existing.onclick=()=>{menu.classList.add("hidden");happyBox()};
+   existing.removeAttribute("disabled");
+   return;
+ }
+ const b=document.createElement("button"); b.id="happyBoxBtn"; b.className="menu-item"; b.type="button"; b.textContent="🎁 HAPPY BOX"; b.onclick=()=>{menu.classList.add("hidden");happyBox()};
+ menu.appendChild(b);
 }
 
 
