@@ -19,6 +19,48 @@ function eventTitle(x){const f=x.fields;if(x.type==="baptism")return "🕊️ "+
 function calendar(){const y=month.getFullYear(),m=month.getMonth();$("monthTitle").textContent=new Intl.DateTimeFormat("el-GR",{month:"long",year:"numeric"}).format(month).toUpperCase();const g=$("calendar");g.innerHTML="";const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();for(let i=0;i<first;i++)g.appendChild(document.createElement("div"));for(let d=1;d<=days;d++){const c=document.createElement("div");c.className="day";c.innerHTML="<b>"+d+"</b>";data.filter(x=>{const z=new Date(x.date+"T00:00:00");return z.getFullYear()===y&&z.getMonth()===m&&z.getDate()===d}).forEach(x=>{const b=document.createElement("button");b.className="event";b.type="button";b.textContent=eventTitle(x);b.onclick=()=>detail(x);c.appendChild(b)});g.appendChild(c)}}
 function detail(x){let h="<h2>"+schemas[x.type][0]+"</h2>";schemas[x.type][1].forEach(([s,fs])=>{h+='<div class="form-section"><h3>'+s+'</h3><div class="detail-grid">'+fs.map(q=>'<div class="detail"><b>'+q+'</b><br>'+esc(x.fields[q]||"—").replace(/\n/g,"<br>")+'</div>').join("")+"</div></div>"});h+='<button class="primary" id="editBtn">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteBtn">🗑️ ΔΙΑΓΡΑΦΗ</button>';$("detailMount").innerHTML=h;show("detailView");$("editBtn").onclick=()=>form(x.type,x);$("deleteBtn").onclick=()=>{const ok=window.confirm("Να διαγραφεί οριστικά αυτό το μυστήριο;");if(!ok)return;const before=data.length;data=data.filter(a=>String(a.id)!==String(x.id));if(data.length===before){const legacy=JSON.parse(localStorage.getItem("gamos_ala_ellinika_v2")||"[]");data=Array.isArray(legacy)?legacy.filter(a=>String(a.id)!==String(x.id)):data}localStorage.setItem(KEY,JSON.stringify(data));localStorage.removeItem("gamos_ala_ellinika_v2");calendar();show("calendarView");setTimeout(()=>alert("Το μυστήριο διαγράφηκε."),50)}}
 function renderDaily(){const date=$("scheduleDate").value,rows=$("scheduleRows");rows.innerHTML="";for(let h=8;h<=22;h++){const t=String(h).padStart(2,"0")+":00",r=document.createElement("div");r.className="schedule-row";r.innerHTML='<span>'+t+'</span><input type="text" placeholder="Τι έχεις προγραμματίσει;">';const i=r.querySelector("input");i.value=(daily[date]||{})[t]||"";i.oninput=()=>{daily[date]=daily[date]||{};daily[date][t]=i.value;localStorage.setItem(DAYKEY,JSON.stringify(daily))};rows.appendChild(r)}}
-function init(){ $("newBtn").onclick=()=>show("typeView"); $("calendarBtn").onclick=()=>{calendar();show("calendarView")}; $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden"); $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden"); $("mysteriesBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");show("typeView")}; document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type)); document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back)); $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()}; $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()}; const now=new Date();$("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);$("scheduleDate").onchange=renderDaily;renderDaily();calendar()}
+function init(){ $("newBtn").onclick=()=>show("typeView"); $("calendarBtn").onclick=()=>{calendar();show("calendarView")}; $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden"); $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden"); $("mysteriesBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");show("typeView")}; document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type)); $("collaboratorsBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");collaborators()}; document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back)); $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()}; $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()}; const now=new Date();$("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);$("scheduleDate").onchange=renderDaily;renderDaily();calendar()}
 window.show=show;window.form=form;window.calendar=calendar;window.detail=detail;
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+
+/* ΣΥΝΕΡΓΑΤΕΣ — κενή σελίδα με ελεύθερους φακέλους */
+const COLLAB_KEY="gamos_collaborators_v1";
+function collaborators(){
+  const folders=JSON.parse(localStorage.getItem(COLLAB_KEY)||"[]");
+  let h='<button class="back" id="collabBack">← ΜΕΝΟΥ</button><h2>👥 ΣΥΝΕΡΓΑΤΕΣ</h2>';
+  h+='<div class="collab-empty"><p>Η σελίδα είναι άδεια.</p><p>Πάτησε <b>＋ ΝΕΟΣ ΦΑΚΕΛΟΣ</b> και γράψε ό,τι θέλεις.</p></div>';
+  h+='<button class="primary big" id="newCollaboratorFolder">＋ ΝΕΟΣ ΦΑΚΕΛΟΣ</button>';
+  h+='<div id="collabFolders" class="collab-folders"></div>';
+  $("detailMount").innerHTML=h;
+  show("detailView");
+  $("collabBack").onclick=()=>{show("homeView")};
+  $("newCollaboratorFolder").onclick=()=>newCollaboratorFolder();
+  renderCollaboratorFolders(folders);
+}
+function renderCollaboratorFolders(folders){
+  const box=$("collabFolders"); if(!box)return;
+  box.innerHTML="";
+  folders.forEach((folder,i)=>{
+    const b=document.createElement("button"); b.type="button"; b.className="collab-folder";
+    b.textContent="📁 "+folder.name; b.onclick=()=>openCollaboratorFolder(i);
+    box.appendChild(b);
+  });
+}
+function newCollaboratorFolder(){
+  const name=prompt("Γράψε το όνομα του φακέλου:");
+  if(name===null)return;
+  const clean=name.trim(); if(!clean){alert("Γράψε ένα όνομα φακέλου.");return}
+  const folders=JSON.parse(localStorage.getItem(COLLAB_KEY)||"[]");
+  folders.push({id:Date.now().toString(36),name:clean,notes:""});
+  localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));
+  collaborators();
+}
+function openCollaboratorFolder(i){
+  const folders=JSON.parse(localStorage.getItem(COLLAB_KEY)||"[]"), f=folders[i]; if(!f)return;
+  $("detailMount").innerHTML='<button class="back" id="folderBack">← ΣΥΝΕΡΓΑΤΕΣ</button><h2>📁 '+esc(f.name)+'</h2><div class="collab-editor"><textarea id="collabNotes" placeholder="Γράψε εδώ ό,τι θέλεις...">'+esc(f.notes||"")+'</textarea></div><button class="primary" id="saveCollabFolder">💾 ΑΠΟΘΗΚΕΥΣΗ</button><button class="danger" id="deleteCollabFolder">🗑️ ΔΙΑΓΡΑΦΗ ΦΑΚΕΛΟΥ</button>';
+  show("detailView");
+  $("folderBack").onclick=()=>collaborators();
+  $("saveCollabFolder").onclick=()=>{folders[i].notes=$("collabNotes").value;localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));alert("Αποθηκεύτηκε.");};
+  $("deleteCollabFolder").onclick=()=>{if(confirm("Να διαγραφεί οριστικά ο φάκελος;")){folders.splice(i,1);localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));collaborators()}};
+}
+window.collaborators=collaborators;
