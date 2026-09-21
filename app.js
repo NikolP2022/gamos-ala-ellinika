@@ -33,7 +33,7 @@ function collaborators(){
   h+='<div id="collabFolders" class="collab-folders"></div>';
   $("detailMount").innerHTML=h;
   show("detailView");
-  $("collabBack").onclick=()=>{show("homeView")};
+  $("collabBack").onclick=()=>{show("homeView");$("sideMenu").classList.remove("hidden")};
   $("newCollaboratorFolder").onclick=()=>newCollaboratorFolder();
   renderCollaboratorFolders(folders);
 }
@@ -47,13 +47,18 @@ function renderCollaboratorFolders(folders){
   });
 }
 function newCollaboratorFolder(){
-  const name=prompt("Γράψε το όνομα του φακέλου:");
-  if(name===null)return;
-  const clean=name.trim(); if(!clean){alert("Γράψε ένα όνομα φακέλου.");return}
-  const folders=JSON.parse(localStorage.getItem(COLLAB_KEY)||"[]");
-  folders.push({id:Date.now().toString(36),name:clean,notes:""});
-  localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));
-  collaborators();
+  $("detailMount").innerHTML='<button class="back" id="newFolderBack">← ΣΥΝΕΡΓΑΤΕΣ</button><h2>📁 ΝΕΟΣ ΦΑΚΕΛΟΣ</h2><div class="collab-editor"><label class="collab-label">ΟΝΟΜΑ ΦΑΚΕΛΟΥ</label><input id="newFolderName" class="collab-name" type="text" placeholder="Γράψε ό,τι θέλεις..."><label class="collab-label">ΠΕΡΙΕΧΟΜΕΝΟ</label><textarea id="newFolderNotes" placeholder="Γράψε εδώ ό,τι θέλεις..."></textarea></div><button class="primary" id="saveNewFolder">💾 ΑΠΟΘΗΚΕΥΣΗ ΦΑΚΕΛΟΥ</button>';
+  show("detailView");
+  $("newFolderBack").onclick=()=>collaborators();
+  $("saveNewFolder").onclick=()=>{
+    const name=$("newFolderName").value.trim();
+    if(!name){alert("Γράψε το όνομα του φακέλου.");return}
+    const folders=JSON.parse(localStorage.getItem(COLLAB_KEY)||"[]");
+    folders.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2),name,notes:$("newFolderNotes").value});
+    localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));
+    collaborators();
+  };
+  $("newFolderName").focus();
 }
 function openCollaboratorFolder(i){
   const folders=JSON.parse(localStorage.getItem(COLLAB_KEY)||"[]"), f=folders[i]; if(!f)return;
