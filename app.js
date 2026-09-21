@@ -21,7 +21,7 @@ function detail(x){let h="<h2>"+schemas[x.type][0]+"</h2>";schemas[x.type][1].fo
 function renderDaily(){const date=$("scheduleDate").value,rows=$("scheduleRows");rows.innerHTML="";for(let h=8;h<=22;h++){const t=String(h).padStart(2,"0")+":00",r=document.createElement("div");r.className="schedule-row";r.innerHTML='<span>'+t+'</span><input type="text" placeholder="Τι έχεις προγραμματίσει;">';const i=r.querySelector("input");i.value=(daily[date]||{})[t]||"";i.oninput=()=>{daily[date]=daily[date]||{};daily[date][t]=i.value;localStorage.setItem(DAYKEY,JSON.stringify(daily))};rows.appendChild(r)}}
 function init(){ $("newBtn").onclick=()=>show("typeView"); $("calendarBtn").onclick=()=>{calendar();show("calendarView")}; $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden"); $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden"); $("mysteriesBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");show("typeView")}; document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type)); $("collaboratorsBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");collaborators()}; $("happyBoxBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");happyBox()}; document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back)); $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()}; $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()}; const now=new Date();$("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);$("scheduleDate").onchange=renderDaily;renderDaily();calendar()}
 window.show=show;window.form=form;window.calendar=calendar;window.detail=detail;
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{init();ensureHappyMenu()});else{init();ensureHappyMenu()}
 
 /* ΣΥΝΕΡΓΑΤΕΣ — κενή σελίδα με ελεύθερους φακέλους */
 const COLLAB_KEY="gamos_collaborators_v1";
@@ -86,4 +86,11 @@ function openHappyPage(){
   $("saveHappy").onclick=()=>{localStorage.setItem(HAPPY_KEY,JSON.stringify({notes:$("happyNotes").value}));alert("Αποθηκεύτηκε.");};
 }
 window.happyBox=happyBox;
+function ensureHappyMenu(){
+ const menu=document.getElementById("sideMenu"); if(!menu)return;
+ if(document.getElementById("happyBoxMenuBtn"))return;
+ const b=document.createElement("button"); b.id="happyBoxMenuBtn"; b.className="menu-item"; b.type="button"; b.textContent="🎁 HAPPY BOX"; b.onclick=()=>{menu.classList.add("hidden");happyBox()};
+ const collab=menu.querySelector("#collaboratorsBtn"); if(collab&&collab.parentNode)collab.parentNode.insertBefore(b,collab.nextSibling);else menu.appendChild(b);
+}
+
 
