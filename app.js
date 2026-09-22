@@ -132,7 +132,7 @@ function appointmentFields(kind,item){
     h+=field("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+field("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
     h+='</div></div>';
   }
-  h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ ΡΑΝΤΕΒΟΥ</button></form>';
+  h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ</button></form>';
   $("detailMount").innerHTML=h;show("detailView");
   $("apptListBack").onclick=()=>appointmentFolder(kind);
   $("apptForm").onsubmit=e=>{
@@ -147,7 +147,7 @@ function appointmentFolder(kind){
   const mystery=kind==="mystery",key=mystery?APPT_MYSTERY_KEY:APPT_PARTNER_KEY;
   const title=mystery?"ΥΠΟΨΗΦΙΑ ΜΥΣΤΗΡΙΑ":"ΥΠΟΨΗΦΙΟΙ ΣΥΝΕΡΓΑΤΕΣ",arr=getAppts(key);
   let h='<button class="back" id="appointmentFolderBack">← ΡΑΝΤΕΒΟΥ</button><h2>📁 '+title+'</h2>';
-  h+='<button class="primary big" id="newAppointment">＋ ΝΕΟ ΡΑΝΤΕΒΟΥ</button>';
+  h+='<button class="primary big" id="newAppointment">＋ ΝΕΟ ΡΑΝΤΕΒΟΥ</button>';\n  h+='<p class="empty-state">Κάθε ραντεβού δημιουργεί δικό του φάκελο.</p>';
   if(!arr.length)h+='<p class="empty-state">Δεν υπάρχουν ακόμη ραντεβού.</p>';
   else h+='<div class="folder-list">'+arr.map((x,i)=>'<button type="button" class="menu-item" data-i="'+i+'">📁 '+esc(x.name||"Χωρίς όνομα")+' — '+esc(x.date||"Χωρίς ημερομηνία")+'</button>').join("")+'</div>';
   $("detailMount").innerHTML=h;show("detailView");
