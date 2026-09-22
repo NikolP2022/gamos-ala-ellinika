@@ -112,26 +112,77 @@ function ensureHappyMenu(){
 
 
 
-/* ΡΑΝΤΕΒΟΥ */
+/* ΡΑΝΤΕΒΟΥ — υποψήφια μυστήρια & υποψήφιοι συνεργάτες */
+const APPT_MYSTERY_KEY="gamos_appointments_mysteries_v1";
+const APPT_PARTNER_KEY="gamos_appointments_partners_v1";
+function getAppts(key){const x=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(x)?x:[]}
+function saveAppts(key,x){localStorage.setItem(key,JSON.stringify(x))}
+function appointmentFields(kind,item){
+  const mystery=kind==="mystery";
+  const f=item||{};
+  let h='<button class="back" id="apptListBack">← ΡΑΝΤΕΒΟΥ</button><h2>'+ (mystery?"📁 Ραντεβού μυστήριου":"📁 Ραντεβού για συνεργασία") +'</h2><form id="apptForm">';
+  if(mystery){
+    h+='<div class="form-section"><div class="fields">';
+    h+=field("ΟΝΟΜΑ",f.name)+field("ΤΗΛΕΦΩΝΟ",f.phone)+field("ΜΥΣΤΗΡΙΟ",f.mystery)+field("ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ",f.mysteryDate)+field("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+field("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
+    h+='</div></div>';
+  }else{
+    h+='<div class="form-section"><div class="fields">';
+    h+=field("ΟΝΟΜΑ",f.name)+field("ΤΗΛΕΦΩΝΟ",f.phone);
+    h+=field("ΒΙΝΤΕΟ □",f.video)+field("ΦΩΤΟΓΡΑΦΙΑ □",f.photo);
+    h+=field("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+field("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
+    h+='</div></div>';
+  }
+  h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ ΡΑΝΤΕΒΟΥ</button></form>';
+  $("detailMount").innerHTML=h;show("detailView");
+  $("apptListBack").onclick=()=>appointmentFolder(kind);
+  $("apptForm").onsubmit=e=>{
+    e.preventDefault();const fd=new FormData(e.target),x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:fd.get("ΟΝΟΜΑ")||"",phone:fd.get("ΤΗΛΕΦΩΝΟ")||"",date:fd.get("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ")||"",time:fd.get("ΩΡΑ ΡΑΝΤΕΒΟΥ")||""};
+    if(mystery){x.mystery=fd.get("ΜΥΣΤΗΡΙΟ")||"";x.mysteryDate=fd.get("ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ")||"";saveAppts(APPT_MYSTERY_KEY,upsert(getAppts(APPT_MYSTERY_KEY),x))}
+    else{x.video=fd.get("ΒΙΝΤΕΟ □")==="ΝΑΙ";x.photo=fd.get("ΦΩΤΟΓΡΑΦΙΑ □")==="ΝΑΙ";saveAppts(APPT_PARTNER_KEY,upsert(getAppts(APPT_PARTNER_KEY),x))}
+    appointmentFolder(kind);
+  };
+}
+function upsert(a,x){const i=a.findIndex(v=>String(v.id)===String(x.id));if(i>=0)a[i]=x;else a.push(x);return a}
+function appointmentFolder(kind){
+  const mystery=kind==="mystery",key=mystery?APPT_MYSTERY_KEY:APPT_PARTNER_KEY;
+  const title=mystery?"ΥΠΟΨΗΦΙΑ ΜΥΣΤΗΡΙΑ":"ΥΠΟΨΗΦΙΟΙ ΣΥΝΕΡΓΑΤΕΣ",arr=getAppts(key);
+  let h='<button class="back" id="appointmentFolderBack">← ΡΑΝΤΕΒΟΥ</button><h2>📁 '+title+'</h2>';
+  h+='<button class="primary big" id="newAppointment">＋ ΝΕΟ ΡΑΝΤΕΒΟΥ</button>';
+  if(!arr.length)h+='<p class="empty-state">Δεν υπάρχουν ακόμη ραντεβού.</p>';
+  else h+='<div class="folder-list">'+arr.map((x,i)=>'<button type="button" class="menu-item" data-i="'+i+'">📁 '+esc(x.name||"Χωρίς όνομα")+' — '+esc(x.date||"Χωρίς ημερομηνία")+'</button>').join("")+'</div>';
+  $("detailMount").innerHTML=h;show("detailView");
+  $("appointmentFolderBack").onclick=()=>appointments();
+  $("newAppointment").onclick=()=>appointmentFields(kind);
+  document.querySelectorAll("#detailMount .menu-item[data-i]").forEach(b=>b.onclick=()=>openAppointment(kind,Number(b.dataset.i)));
+}
+function openAppointment(kind,i){
+  const key=kind==="mystery"?APPT_MYSTERY_KEY:APPT_PARTNER_KEY,arr=getAppts(key),x=arr[i];if(!x)return;
+  const mystery=kind==="mystery";
+  let h='<button class="back" id="openApptBack">← '+(mystery?"ΥΠΟΨΗΦΙΑ ΜΥΣΤΗΡΙΑ":"ΥΠΟΨΗΦΙΟΙ ΣΥΝΕΡΓΑΤΕΣ")+'</button><h2>📁 '+esc(x.name||"Ραντεβού")+'</h2>';
+  h+='<div class="form-section"><div class="detail-grid">';
+  const rows=mystery?[["ΟΝΟΜΑ",x.name],["ΤΗΛΕΦΩΝΟ",x.phone],["ΜΥΣΤΗΡΙΟ",x.mystery],["ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ",x.mysteryDate],["ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",x.date],["ΩΡΑ ΡΑΝΤΕΒΟΥ",x.time]]:[["ΟΝΟΜΑ",x.name],["ΤΗΛΕΦΩΝΟ",x.phone],["ΒΙΝΤΕΟ",x.video?"ΝΑΙ":"ΟΧΙ"],["ΦΩΤΟΓΡΑΦΙΑ",x.photo?"ΝΑΙ":"ΟΧΙ"],["ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",x.date],["ΩΡΑ ΡΑΝΤΕΒΟΥ",x.time]];
+  rows.forEach(r=>h+='<div class="detail"><b>'+r[0]+'</b><br>'+esc(r[1]||"—")+'</div>');
+  h+='</div></div><button class="primary" id="editAppointment">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteAppointment">🗑️ ΔΙΑΓΡΑΦΗ</button>';
+  $("detailMount").innerHTML=h;show("detailView");
+  $("openApptBack").onclick=()=>appointmentFolder(kind);
+  $("editAppointment").onclick=()=>appointmentFields(kind,x);
+  $("deleteAppointment").onclick=()=>{if(confirm("Να διαγραφεί οριστικά αυτό το ραντεβού;")){arr.splice(i,1);saveAppts(key,arr);appointmentFolder(kind)}};
+}
 function appointments(){
   let h='<button class="back" id="appointmentsBack">← ΜΕΝΟΥ</button><h2>📅 ΡΑΝΤΕΒΟΥ</h2>';
   h+='<button class="menu-item appointment-folder" type="button" id="candidateMysteries">＋ ΥΠΟΨΗΦΙΑ ΜΥΣΤΗΡΙΑ</button>';
   h+='<button class="menu-item appointment-folder" type="button" id="candidatePartners">＋ ΥΠΟΨΗΦΙΟΙ ΣΥΝΕΡΓΑΤΕΣ</button>';
-  $("detailMount").innerHTML=h; show("detailView");
+  $("detailMount").innerHTML=h;show("detailView");
   $("appointmentsBack").onclick=()=>show("homeView");
-  $("candidateMysteries").onclick=()=>appointmentFolder("ΥΠΟΨΗΦΙΑ ΜΥΣΤΗΡΙΑ");
-  $("candidatePartners").onclick=()=>appointmentFolder("ΥΠΟΨΗΦΙΟΙ ΣΥΝΕΡΓΑΤΕΣ");
-}
-function appointmentFolder(title){
-  $("detailMount").innerHTML='<button class="back" id="appointmentFolderBack">← ΡΑΝΤΕΒΟΥ</button><h2>📁 '+esc(title)+'</h2><div class="collab-empty"><p>Ο φάκελος είναι έτοιμος.</p></div>';
-  show("detailView");
-  $("appointmentFolderBack").onclick=()=>appointments();
+  $("candidateMysteries").onclick=()=>appointmentFolder("mystery");
+  $("candidatePartners").onclick=()=>appointmentFolder("partner");
 }
 window.appointments=appointments;
 function ensureAppointmentsMenu(){
- const menu=document.getElementById("sideMenu"); if(!menu)return;
+ const menu=document.getElementById("sideMenu");if(!menu)return;
  let b=document.getElementById("appointmentsBtn");
  if(!b){b=document.createElement("button");b.id="appointmentsBtn";b.className="menu-item";b.type="button";b.textContent="📅 ΡΑΝΤΕΒΟΥ";menu.insertBefore(b,menu.querySelector("#collaboratorsBtn")||null)}
  b.onclick=()=>{menu.classList.add("hidden");appointments()};
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ensureAppointmentsMenu);else ensureAppointmentsMenu();
+
