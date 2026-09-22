@@ -111,3 +111,27 @@ function ensureHappyMenu(){
 }
 
 
+
+/* ΡΑΝΤΕΒΟΥ */
+function appointments(){
+  let h='<button class="back" id="appointmentsBack">← ΜΕΝΟΥ</button><h2>📅 ΡΑΝΤΕΒΟΥ</h2>';
+  h+='<button class="menu-item appointment-folder" type="button" id="candidateMysteries">＋ ΥΠΟΨΗΦΙΑ ΜΥΣΤΗΡΙΑ</button>';
+  h+='<button class="menu-item appointment-folder" type="button" id="candidatePartners">＋ ΥΠΟΨΗΦΙΟΙ ΣΥΝΕΡΓΑΤΕΣ</button>';
+  $("detailMount").innerHTML=h; show("detailView");
+  $("appointmentsBack").onclick=()=>show("homeView");
+  $("candidateMysteries").onclick=()=>appointmentFolder("ΥΠΟΨΗΦΙΑ ΜΥΣΤΗΡΙΑ");
+  $("candidatePartners").onclick=()=>appointmentFolder("ΥΠΟΨΗΦΙΟΙ ΣΥΝΕΡΓΑΤΕΣ");
+}
+function appointmentFolder(title){
+  $("detailMount").innerHTML='<button class="back" id="appointmentFolderBack">← ΡΑΝΤΕΒΟΥ</button><h2>📁 '+esc(title)+'</h2><div class="collab-empty"><p>Ο φάκελος είναι έτοιμος.</p></div>';
+  show("detailView");
+  $("appointmentFolderBack").onclick=()=>appointments();
+}
+window.appointments=appointments;
+function ensureAppointmentsMenu(){
+ const menu=document.getElementById("sideMenu"); if(!menu)return;
+ let b=document.getElementById("appointmentsBtn");
+ if(!b){b=document.createElement("button");b.id="appointmentsBtn";b.className="menu-item";b.type="button";b.textContent="📅 ΡΑΝΤΕΒΟΥ";menu.insertBefore(b,menu.querySelector("#collaboratorsBtn")||null)}
+ b.onclick=()=>{menu.classList.add("hidden");appointments()};
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ensureAppointmentsMenu);else ensureAppointmentsMenu();
