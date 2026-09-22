@@ -187,3 +187,27 @@ function ensureAppointmentsMenu(){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ensureAppointmentsMenu);else ensureAppointmentsMenu();
 
+
+
+/* FIX: αξιόπιστο άνοιγμα όλων των φακέλων μυστηρίων */
+(function(){
+  function bindMysteryFolders(){
+    document.addEventListener("click",function(e){
+      const el=e.target.closest("button,.type-card,[data-type]");
+      if(!el)return;
+      const txt=(el.textContent||"").replace(/\s+/g," ").trim();
+      let type=null;
+      if(el.dataset && el.dataset.type) type=el.dataset.type;
+      else if(/ΓΑΜΟΣ\s*&\s*ΒΑΠΤΙΣΗ/i.test(txt)) type="weddingBaptism";
+      else if(/ΠΟΛΙΤΙΚΟΣ\s+ΓΑΜΟΣ/i.test(txt)) type="civilWedding";
+      else if(/^.*ΒΑΠΤΙΣΗ/i.test(txt) && !/ΓΑΜΟΣ/i.test(txt)) type="baptism";
+      else if(/ΓΑΜΟΣ/i.test(txt) && !/ΒΑΠΤΙΣΗ/i.test(txt)) type="wedding";
+      if(type && typeof window.form==="function"){
+        e.preventDefault(); e.stopImmediatePropagation();
+        window.form(type);
+      }
+    },true);
+  }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bindMysteryFolders);
+  else bindMysteryFolders();
+})();
