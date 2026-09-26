@@ -211,3 +211,28 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",bindMysteryFolders);
   else bindMysteryFolders();
 })();
+
+/* ΕΞΑΓΩΓΗ PDF σε όλους τους φακέλους και στις καρτέλες */
+(function(){
+  function addPdfButton(){
+    ["detailMount","formMount"].forEach(function(id){
+      var mount=document.getElementById(id);
+      if(!mount || !mount.innerHTML.trim() || mount.querySelector(".pdf-export"))return;
+      var b=document.createElement("button");
+      b.type="button";b.className="secondary pdf-export";b.textContent="📄 ΑΠΟΘΗΚΕΥΣΗ ΣΕ PDF";
+      b.addEventListener("click",function(){window.print()});
+      mount.insertBefore(b,mount.firstChild);
+    });
+  }
+  function setup(){
+    addPdfButton();
+    var observer=new MutationObserver(addPdfButton);
+    ["detailMount","formMount"].forEach(function(id){
+      var el=document.getElementById(id);if(el)observer.observe(el,{childList:true,subtree:true});
+    });
+    var style=document.createElement("style");
+    style.textContent="@media print{body{background:#fff!important;color:#000!important}.topbar,.side-menu,.back,.menu-btn,.pdf-export,button.primary,button.secondary,button.danger,.section-head button{display:none!important}.container{max-width:none!important;margin:0!important;padding:0!important}.view{display:none!important}.view:not(.hidden){display:block!important}.form-section,.detail,.collab-editor{break-inside:avoid;page-break-inside:avoid}input,textarea,select{color:#000!important;border:0!important;box-shadow:none!important;background:transparent!important}textarea{white-space:pre-wrap!important}h1,h2,h3{color:#000!important}}";
+    document.head.appendChild(style);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
+})();
