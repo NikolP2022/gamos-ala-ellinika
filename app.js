@@ -366,18 +366,20 @@ const APPT_PARTNER_KEY="gamos_appointments_partners_v1";
 function getAppts(key){const x=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(x)?x:[]}
 function saveAppts(key,x){localStorage.setItem(key,JSON.stringify(x))}
 function appointmentFields(kind,item){
+  const dateField=(label,value)=>`<div class="field"><label>${label}</label><input type="text" class="date-picker" readonly autocomplete="off" inputmode="none" placeholder="📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ" value="${esc(value||"")}"></div>`;
+  const timeField=(label,value)=>`<div class="field"><label>${label}</label><input type="text" class="time-picker" readonly autocomplete="off" inputmode="none" placeholder="🕐 ΕΠΙΛΕΞΕ ΩΡΑ" value="${esc(value||"")}"></div>`;
   const mystery=kind==="mystery";
   const f=item||{};
   let h='<button class="back" id="apptListBack">← ΡΑΝΤΕΒΟΥ</button><h2>'+ (mystery?"📁 Ραντεβού μυστήριου":"📁 Ραντεβού για συνεργασία") +'</h2><form id="apptForm">';
   if(mystery){
     h+='<div class="form-section"><div class="fields">';
-    h+=field("ΟΝΟΜΑ",f.name)+field("ΤΗΛΕΦΩΝΟ",f.phone)+field("ΜΥΣΤΗΡΙΟ",f.mystery)+field("ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ",f.mysteryDate)+field("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+field("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
+    h+=field("ΟΝΟΜΑ",f.name)+field("ΤΗΛΕΦΩΝΟ",f.phone)+field("ΜΥΣΤΗΡΙΟ",f.mystery)+dateField("ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ",f.mysteryDate)+dateField("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+timeField("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
     h+='</div></div>';
   }else{
     h+='<div class="form-section"><div class="fields">';
     h+=field("ΟΝΟΜΑ",f.name)+field("ΤΗΛΕΦΩΝΟ",f.phone);
     h+=field("ΒΙΝΤΕΟ □",f.video)+field("ΦΩΤΟΓΡΑΦΙΑ □",f.photo);
-    h+=field("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+field("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
+    h+=dateField("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+timeField("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
     h+='</div></div>';
   }
   h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ</button></form>';
