@@ -570,42 +570,31 @@ function pending(){simpleFolders("📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",TASK_CATS,TASKS
 function deliveries(){simpleFolders("📦 ΠΑΡΑΔΟΣΕΙΣ",DELIVERY_CATS,DELIVERIES_KEY,"delivery")}
 function disks(){simpleFolders("💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",DISK_CATS,DISKS_KEY,"disk")}
 window.pending=pending;window.deliveries=deliveries;window.disks=disks;
-// ===== CLOUD SYNC: CENTRAL WORKSPACE — THREE-WAY MERGE =====
+// ===== CLOUD SYNC: PRIVATE DEVICE WORKSPACE =====
 const SYNC_URL="https://vbkuvexyqehmpeeejqbh.supabase.co/functions/v1/gamos-sync";
-const SYNC_API_KEY="sb_publishable__nczNPWr3do_hqi6MCS0AQ_fjYCXhGk";
-const SYNC_REV_KEY="gamos_sync_revision_v1";
-const SYNC_DEVICE_KEY="gamos_sync_device_v1";
-let syncBusy=false,syncRevision=Number(localStorage.getItem(SYNC_REV_KEY)||0),syncTimer=null;
+const SYNC_TOKEN_KEY="gamos_sync_token_v2";
+const SYNC_REV_KEY="gamos_sync_revision_v2";
+let syncBusy=false,syncTimer=null,syncRevision=Number(localStorage.getItem(SYNC_REV_KEY)||0);
 
-function syncDeviceId(){
-  let id=localStorage.getItem(SYNC_DEVICE_KEY);
-  if(!id){id=(crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2));localStorage.setItem(SYNC_DEVICE_KEY,id)}
-  return id;
-}
-const SYNC_DEVICE_ID=syncDeviceId();
-
+function syncToken(){return (localStorage.getItem(SYNC_TOKEN_KEY)||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
 function syncAllLocalStorage(){
   const o={};
   for(let i=0;i<localStorage.length;i++){
     const k=localStorage.key(i);
-    if(k&&k!==SYNC_REV_KEY&&k!=="gamos_sync_token"&&k!==SYNC_DEVICE_KEY)o[k]=localStorage.getItem(k);
+    if(k&&k!==SYNC_TOKEN_KEY&&k!==SYNC_REV_KEY)o[k]=localStorage.getItem(k);
   }
   return o;
 }
-function syncApplyAll(data){
-  syncBusy=true;
-  try{
-    Object.entries(data||{}).forEach(([k,v])=>{
-      if(k!==SYNC_REV_KEY&&k!=="gamos_sync_token"&&k!==SYNC_DEVICE_KEY&&v!=null)localStorage.setItem(k,v);
-    });
-  }finally{syncBusy=false}
+function syncApplyAll(obj){
+  Object.entries(obj||{}).forEach(([k,v])=>{
+    if(k!==SYNC_TOKEN_KEY&&k!==SYNC_REV_KEY&&v!=null)localStorage.setItem(k,v);
+  });
 }
 function syncParse(v){try{return JSON.parse(v)}catch{return v}}
 function syncEqual(a,b){return JSON.stringify(a)===JSON.stringify(b)}
 function syncArrayById(v){
-  const a=Array.isArray(v)?v:[];
-  const m=new Map();
-  a.forEach((x,i)=>{const id=x&&x.id!=null?String(x.id):"__index_"+i;m.set(id,x)});
+  const a=Array.isArray(v)?v:[],m=new Map();
+  a.forEach((x,i)=>m.set(x&&x.id!=null?String(x.id):"__index_"+i,x));
   return m;
 }
 function syncThreeWayValue(base,local,remote){
@@ -615,139 +604,137 @@ function syncThreeWayValue(base,local,remote){
     const bm=syncArrayById(base),lm=syncArrayById(local),rm=syncArrayById(remote);
     const ids=new Set([...bm.keys(),...lm.keys(),...rm.keys()]),out=[];
     for(const id of ids){
-      const hasB=bm.has(id),hasL=lm.has(id),hasR=rm.has(id);
-      const bv=hasB?bm.get(id):undefined,lv=hasL?lm.get(id):undefined,rv=hasR?rm.get(id):undefined;
-      const lc=hasL!==hasB||!syncEqual(lv,bv),rc=hasR!==hasB||!syncEqual(rv,bv);
-      if(lc&&!rc){if(hasL)out.push(lv);continue}
-      if(rc&&!lc){if(hasR)out.push(rv);continue}
-      if(!lc&&!rc){if(hasB)out.push(bv);continue}
-      if(lc&&rc){
-        if(hasL&&!hasR){out.push(lv);continue}
-        if(hasR&&!hasL){out.push(rv);continue}
-        out.push(lv);
-      }
+      const hb=bm.has(id),hl=lm.has(id),hr=rm.has(id);
+      const b=hb?bm.get(id):undefined,l=hl?lm.get(id):undefined,r=hr?rm.get(id):undefined;
+      const lc=hl!==hb||!syncEqual(l,b),rc=hr!==hb||!syncEqual(r,b);
+      if(lc&&!rc){if(hl)out.push(l);continue}
+      if(rc&&!lc){if(hr)out.push(r);continue}
+      if(!lc&&!rc){if(hb)out.push(b);continue}
+      if(hl)out.push(l); else if(hr)out.push(r);
     }
     return JSON.stringify(out);
   }
   const a=syncParse(base),l=syncParse(local),r=syncParse(remote);
   if(a&&typeof a==="object"&&l&&typeof l==="object"&&r&&typeof r==="object"){
-    const keys=new Set([...Object.keys(a),...Object.keys(l),...Object.keys(r)]),o={};
-    keys.forEach(k=>{
-      const av=a[k],lv=l[k],rv=r[k];
-      if(syncEqual(lv,av))o[k]=rv;
-      else if(syncEqual(rv,av))o[k]=lv;
-      else o[k]=lv;
-    });
-    return JSON.stringify(o);
+    const o={};new Set([...Object.keys(a),...Object.keys(l),...Object.keys(r)]).forEach(k=>{
+      if(syncEqual(l[k],a[k]))o[k]=r[k];else if(syncEqual(r[k],a[k]))o[k]=l[k];else o[k]=l[k];
+    });return JSON.stringify(o);
   }
   return local;
 }
 function syncThreeWayData(base,local,remote){
-  const out={...(remote||{})},keys=new Set([...Object.keys(base||{}),...Object.keys(local||{}),...Object.keys(remote||{})]);
-  keys.forEach(k=>{
+  const out={...(remote||{})};
+  new Set([...Object.keys(base||{}),...Object.keys(local||{}),...Object.keys(remote||{})]).forEach(k=>{
     const v=syncThreeWayValue(base?.[k],local?.[k],remote?.[k]);
     if(v===undefined)delete out[k];else out[k]=v;
   });
   return out;
 }
 async function syncCall(body){
-  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":SYNC_API_KEY,"Authorization":"Bearer "+SYNC_API_KEY},body:JSON.stringify(body),cache:"no-store"});
-  const j=await r.json();
+  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
+  let j={};try{j=await r.json()}catch{}
   if(!r.ok){const e=new Error(j.error||"Σφάλμα συγχρονισμού");e.syncResponse=j;throw e}
   return j;
 }
 async function syncPull(){
-  if(syncBusy)return false;
+  const code=syncToken();if(!code||syncBusy)return false;
   syncBusy=true;
   try{
-    const j=await syncCall({action:"pull"});
-    syncRevision=Number(j.revision||0);localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
-    if(j.data&&Object.keys(j.data).length){syncApplyAll(j.data);window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());if(typeof renderDaily==="function")renderDaily()}
+    const j=await syncCall({action:"pull",code});
+    syncApplyAll(j.data||{});syncRevision=Number(j.revision||0);
+    localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+    window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+    if(typeof renderDaily==="function")renderDaily();
     return true;
   }catch(e){console.warn("Cloud sync pull:",e.message);return false}
   finally{syncBusy=false}
 }
 async function syncPush(){
-  if(syncBusy)return false;
+  const code=syncToken();if(!code||syncBusy)return false;
   syncBusy=true;
   try{
     const base=window.__lastSyncSnapshot?JSON.parse(window.__lastSyncSnapshot):syncAllLocalStorage();
     const local=syncAllLocalStorage();
-    let remote=await syncCall({action:"pull"});
+    let remote=await syncCall({action:"pull",code});
     let merged=syncThreeWayData(base,local,remote.data||{});
     try{
-      const j=await syncCall({action:"push",data:merged,base_revision:Number(remote.revision||0),device_id:SYNC_DEVICE_ID});
-      syncApplyAll(j.data||merged);syncRevision=Number(j.revision||0);localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
-      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());if(typeof renderDaily==="function")renderDaily();return true;
+      const j=await syncCall({action:"push",code,data:merged,base_revision:Number(remote.revision||0)});
+      syncApplyAll(j.data||merged);syncRevision=Number(j.revision||0);
+      localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+      if(typeof renderDaily==="function")renderDaily();
+      return true;
     }catch(e){
       if(!e.syncResponse?.conflict)throw e;
-      remote=e.syncResponse;
-      merged=syncThreeWayData(base,local,remote.data||{});
-      const j=await syncCall({action:"push",data:merged,base_revision:Number(remote.revision||0),device_id:SYNC_DEVICE_ID});
-      syncApplyAll(j.data||merged);syncRevision=Number(j.revision||0);localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
-      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());if(typeof renderDaily==="function")renderDaily();return true;
+      remote=e.syncResponse;merged=syncThreeWayData(base,local,remote.data||{});
+      const j=await syncCall({action:"push",code,data:merged,base_revision:Number(remote.revision||0)});
+      syncApplyAll(j.data||merged);syncRevision=Number(j.revision||0);
+      localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+      if(typeof renderDaily==="function")renderDaily();
+      return true;
     }
   }catch(e){console.warn("Cloud sync push:",e.message);return false}
   finally{syncBusy=false}
 }
 async function syncReconcile(){
-  if(syncBusy)return;
+  const code=syncToken();if(!code||syncBusy)return;
   const now=JSON.stringify(syncAllLocalStorage());
   if(window.__lastSyncSnapshot&&now!==window.__lastSyncSnapshot)await syncPush();
   else await syncPull();
 }
+function newSyncCode(){
+  const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let out="";
+  const a=new Uint32Array(12);crypto.getRandomValues(a);
+  a.forEach(n=>out+=chars[n%chars.length]);return out;
+}
+function syncScreen(){
+  const code=syncToken();
+  let h="<button class=\"back\" id=\"syncBack\">← ΜΕΝΟΥ</button><h2>☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ</h2>";
+  h+="<div style=\"max-width:650px;margin:20px auto;padding:20px;background:#fffdf9;border:1px solid #ddcfbf;border-radius:16px\">";
+  h+="<p style=\"font-size:18px;line-height:1.5\"><b>Όλες οι συσκευές σου μπορούν να βλέπουν τα ίδια δεδομένα.</b><br>Χρησιμοποίησε τον ίδιο κωδικό συγχρονισμού σε κάθε κινητό ή υπολογιστή.</p>";
+  if(code){
+    h+="<label style=\"font-weight:bold\">ΚΩΔΙΚΟΣ ΣΥΓΧΡΟΝΙΣΜΟΥ</label><input id=\"syncCodeInput\" value=\""+esc(code)+"\" maxlength=\"16\" style=\"width:100%;padding:15px;margin:8px 0 14px;border:1px solid #cfc1b2;border-radius:10px;font-size:20px;letter-spacing:2px;text-transform:uppercase\">";
+    h+="<button class=\"primary big\" id=\"syncNow\">☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΤΩΡΑ</button>";
+    h+="<button class=\"secondary big\" id=\"syncChange\">🔑 ΑΛΛΑΓΗ / ΣΥΝΔΕΣΗ ΑΛΛΟΥ ΚΩΔΙΚΟΥ</button>";
+  }else{
+    h+="<button class=\"primary big\" id=\"syncCreate\">🔐 ΔΗΜΙΟΥΡΓΙΑ ΚΩΔΙΚΟΥ ΓΙΑ ΤΙΣ ΣΥΣΚΕΥΕΣ ΜΟΥ</button>";
+    h+="<p style=\"font-size:16px;line-height:1.5\">Μετά τη δημιουργία, θα εμφανιστεί ο κωδικός. Κράτησέ τον και βάλε τον ίδιο κωδικό στις άλλες συσκευές.</p>";
+  }
+  h+="<div id=\"syncMsg\" style=\"margin-top:14px;font-weight:bold\"></div></div>";
+  $("detailMount").innerHTML=h;show("detailView");
+  $("syncBack").onclick=()=>show("homeView");
+  const msg=t=>{$("syncMsg").textContent=t};
+  if($("syncCreate"))$("syncCreate").onclick=async()=>{
+    const c=newSyncCode();msg("Δημιουργία ασφαλούς χώρου…");
+    try{
+      const j=await syncCall({action:"create",code:c,data:syncAllLocalStorage()});
+      localStorage.setItem(SYNC_TOKEN_KEY,c);syncRevision=Number(j.revision||1);localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+      alert("Ο κωδικός συγχρονισμού σου είναι:\n\n"+c+"\n\nΧρησιμοποίησε τον ίδιο κωδικό στις άλλες συσκευές.");
+      syncScreen();
+    }catch(e){msg("Δεν δημιουργήθηκε ο κωδικός: "+e.message)}
+  };
+  if($("syncNow"))$("syncNow").onclick=async()=>{
+    const c=$("syncCodeInput").value.toUpperCase().replace(/[^A-Z0-9]/g,"");
+    if(c.length<10){msg("Ο κωδικός πρέπει να έχει τουλάχιστον 10 χαρακτήρες.");return}
+    localStorage.setItem(SYNC_TOKEN_KEY,c);msg("Συγχρονισμός…");
+    const ok=await syncReconcile();msg(ok===false?"Έγινε προσπάθεια συγχρονισμού. Έλεγξε τον κωδικό.":"Ο συγχρονισμός ολοκληρώθηκε.");
+    if(ok!==false)await syncPull();
+  };
+  if($("syncChange"))$("syncChange").onclick=()=>{localStorage.removeItem(SYNC_TOKEN_KEY);localStorage.removeItem(SYNC_REV_KEY);window.__lastSyncSnapshot=null;syncScreen()};
+}
+window.syncScreen=syncScreen;
 (function(){
   setTimeout(async()=>{
-    if(syncBusy)return;
-    syncBusy=true;
-    try{
-      const initialized=localStorage.getItem("gamos_sync_initialized_v1")==="1";
-      const remote=await syncCall({action:"pull"});
-      syncRevision=Number(remote.revision||0);
-      localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
-      const remoteData=remote.data||{};
-
-      if(!initialized){
-        // First opening on this device: NEVER overwrite the central workspace.
-        // If data already exists centrally, download it. Otherwise keep the device's
-        // current state and publish it as the first workspace.
-        if(Object.keys(remoteData).length){
-          syncApplyAll(remoteData);
-        }else{
-          const local=syncAllLocalStorage();
-          const pushed=await syncCall({action:"push",data:local,base_revision:syncRevision,device_id:SYNC_DEVICE_ID});
-          syncRevision=Number(pushed.revision||syncRevision);
-          localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
-          syncApplyAll(pushed.data||local);
-        }
-        localStorage.setItem("gamos_sync_initialized_v1","1");
-      }else{
-        const base=window.__lastSyncSnapshot?JSON.parse(window.__lastSyncSnapshot):syncAllLocalStorage();
-        const local=syncAllLocalStorage();
-        const merged=syncThreeWayData(base,local,remoteData);
-        if(JSON.stringify(merged)!==JSON.stringify(local)){
-          syncApplyAll(merged);
-        }
-      }
-
-      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-      if(typeof renderDaily==="function")renderDaily();
-    }catch(e){console.warn("Αρχικός συγχρονισμός:",e.message)}
-    finally{syncBusy=false}
-  },500);
-
-  syncTimer=setInterval(syncReconcile,2000);
+    if(!syncToken())return;
+    await syncPull();
+    window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+  },700);
+  syncTimer=setInterval(syncReconcile,3000);
   window.addEventListener("focus",()=>syncReconcile());
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncReconcile()});
 })();
-function syncScreen(){
- let h="<button class=\"back\" id=\"syncBack\">← ΜΕΝΟΥ</button><h2>☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ</h2>";
- h+="<p style=\"font-size:18px;line-height:1.5\"><b>Αυτόματος συγχρονισμός εργασίας</b><br>Η εφαρμογή συνδέεται στον ίδιο ασφαλή χώρο δεδομένων από όσες συσκευές χρειάζεσαι.</p>";
- h+="<div style=\"font-size:18px;padding:14px;border-radius:12px;background:#f1f7f3\">☁️ <b>Ο συγχρονισμός είναι ενεργός</b><br>Δεν χρειάζεται κωδικός, email ή ζεύξη συσκευών.</div>";
- h+="<button class=\"primary big\" id=\"syncNow\">☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΤΩΡΑ</button>";
- $("detailMount").innerHTML=h;show("detailView");$("syncBack").onclick=()=>show("homeView");$("syncNow").onclick=async()=>{await syncPush();await syncPull()};
-}
-window.syncScreen=syncScreen;
 function ensureExtraMenus(){
  const menu=$("sideMenu");if(!menu)return;
  [["disksBtn","💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",disks],["pendingBtn","📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",pending],["deliveriesBtn","📦 ΠΑΡΑΔΟΣΕΙΣ",deliveries]].forEach(([id,label,fn])=>{
