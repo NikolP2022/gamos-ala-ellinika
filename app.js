@@ -294,7 +294,7 @@ function openCollaboratorFolder(i){
   $("detailMount").innerHTML='<button class="back" id="folderBack">← ΣΥΝΕΡΓΑΤΕΣ</button><h2>📁 '+esc(f.name)+'</h2><div class="collab-editor"><textarea id="collabNotes" placeholder="Γράψε εδώ ό,τι θέλεις...">'+esc(f.notes||"")+'</textarea></div><button class="primary" id="saveCollabFolder">💾 ΑΠΟΘΗΚΕΥΣΗ</button><button class="danger" id="deleteCollabFolder">🗑️ ΔΙΑΓΡΑΦΗ ΦΑΚΕΛΟΥ</button>';
   show("detailView");
   $("folderBack").onclick=()=>collaborators();
-  $("saveCollabFolder").onclick=()=>{folders[i].notes=$("collabNotes").value;localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));alert("Αποθηκεύτηκε.");};
+  $("saveCollabFolder").onclick=()=>{folders[i].notes=$("collabNotes").value;localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));window.__lastSyncSnapshot="";if(typeof syncPush==="function")syncPush();};
   $("deleteCollabFolder").onclick=()=>{if(confirm("Να διαγραφεί οριστικά ο φάκελος;")){folders.splice(i,1);localStorage.setItem(COLLAB_KEY,JSON.stringify(folders));collaborators()}};
 }
 window.collaborators=collaborators;
