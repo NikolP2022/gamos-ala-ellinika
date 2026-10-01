@@ -236,3 +236,59 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
 })();
+
+
+/* ΕΚΚΡΕΜΟΤΗΤΕΣ / ΠΑΡΑΔΟΣΕΙΣ / ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ */
+const TASKS_KEY="gamos_pending_v1", DELIVERIES_KEY="gamos_deliveries_v1", DISKS_KEY="gamos_disks_v1";
+const TASK_CATS=["🔴 Επείγοντα","🟠 Αυτή την εβδομάδα","🟡 Αναμονή από πελάτη","📞 Τηλέφωνα","💰 Οικονομικές εκκρεμότητες","📸 Εκκρεμούν φωτογραφίες","🎥 Εκκρεμούν βίντεο","💿 Εκκρεμούν παραδόσεις"];
+const DELIVERY_CATS=["📸 Φωτογραφίες","🎥 Βίντεο","💿 USB","📦 Άλμπουμ","🖼️ Εκτυπώσεις","💍 Γάμοι","🕊️ Βαπτίσεις"];
+const DISK_CATS=["Σκληρός Δίσκος 1","Σκληρός Δίσκος 2","Backup","Cloud / Online Backup","Τοποθεσία αρχείων","Ελεύθερος χώρος","Ημερομηνία τελευταίου backup"];
+function arrKey(k){const x=JSON.parse(localStorage.getItem(k)||"[]");return Array.isArray(x)?x:[]}
+function saveArr(k,x){localStorage.setItem(k,JSON.stringify(x))}
+function simpleFolders(title,cats,key,kind){
+  const arr=arrKey(key);
+  let h='<button class="back" id="simpleBack">← ΜΕΝΟΥ</button><h2>'+title+'</h2>';
+  h+='<div class="folder-list">'+cats.map((c,i)=>'<button type="button" class="menu-item" data-i="'+i+'">📁 '+esc(c)+'</button>').join("")+'</div>';
+  $("detailMount").innerHTML=h;show("detailView");
+  $("simpleBack").onclick=()=>show("homeView");
+  document.querySelectorAll("#detailMount .menu-item").forEach(b=>b.onclick=()=>openSimpleFolder(kind,Number(b.dataset.i),cats,key));
+}
+function openSimpleFolder(kind,i,cats,key){
+  const arr=arrKey(key), existing=arr.find(x=>x.category===cats[i]);
+  const x=existing||{id:Date.now().toString(36)+Math.random().toString(36).slice(2),category:cats[i],notes:"",name:"",date:"",status:""};
+  let h='<button class="back" id="simpleFolderBack">← '+(kind==="task"?"ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"ΠΑΡΑΔΟΣΕΙΣ":"ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ")+'</button><h2>📁 '+esc(x.category)+'</h2>';
+  h+='<div class="collab-editor">';
+  if(kind==="disk"){
+    h+='<label class="collab-label">ΟΝΟΜΑ / ΣΤΟΙΧΕΙΑ</label><input id="simpleName" class="collab-name" value="'+esc(x.name||"")+'" placeholder="Γράψε στοιχεία...">';
+    h+='<label class="collab-label">ΣΗΜΕΙΩΣΕΙΣ / ΤΟΠΟΘΕΣΙΑ / ΕΛΕΥΘΕΡΟΣ ΧΩΡΟΣ</label>';
+  }else{
+    h+='<label class="collab-label">ΟΝΟΜΑ / ΠΕΛΑΤΗΣ</label><input id="simpleName" class="collab-name" value="'+esc(x.name||"")+'" placeholder="Γράψε όνομα...">';
+    h+='<label class="collab-label">ΗΜΕΡΟΜΗΝΙΑ</label><input id="simpleDate" type="date" value="'+esc(x.date||"")+'">';
+    h+='<label class="collab-label">ΣΗΜΕΙΩΣΕΙΣ</label>';
+  }
+  h+='<textarea id="simpleNotes" placeholder="Γράψε εδώ ό,τι χρειάζεσαι...">'+esc(x.notes||"")+'</textarea></div><button class="primary" id="saveSimple">💾 ΑΠΟΘΗΚΕΥΣΗ</button>';
+  if(existing)h+='<button class="danger" id="deleteSimple">🗑️ ΔΙΑΓΡΑΦΗ</button>';
+  $("detailMount").innerHTML=h;show("detailView");
+  $("simpleFolderBack").onclick=()=>simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);
+  $("saveSimple").onclick=()=>{
+    x.name=$("simpleName")?.value||"";
+    x.date=$("simpleDate")?.value||"";
+    x.notes=$("simpleNotes").value;
+    const all=arrKey(key),n=all.findIndex(z=>z.category===x.category);
+    if(n>=0)all[n]=x;else all.push(x);saveArr(key,all);
+    simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);
+  };
+  if($("deleteSimple"))$("deleteSimple").onclick=()=>{saveArr(key,arrKey(key).filter(z=>z.category!==x.category));simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind)};
+}
+function pending(){simpleFolders("📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",TASK_CATS,TASKS_KEY,"task")}
+function deliveries(){simpleFolders("📦 ΠΑΡΑΔΟΣΕΙΣ",DELIVERY_CATS,DELIVERIES_KEY,"delivery")}
+function disks(){simpleFolders("💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",DISK_CATS,DISKS_KEY,"disk")}
+window.pending=pending;window.deliveries=deliveries;window.disks=disks;
+function ensureExtraMenus(){
+ const menu=$("sideMenu");if(!menu)return;
+ [["disksBtn","💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",disks],["pendingBtn","📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",pending],["deliveriesBtn","📦 ΠΑΡΑΔΟΣΕΙΣ",deliveries]].forEach(([id,label,fn])=>{
+   let b=$(id);if(!b){b=[...menu.querySelectorAll(".menu-item")].find(x=>x.textContent.includes(label.slice(2)))}
+   if(b){b.id=id;b.onclick=()=>{menu.classList.add("hidden");fn()}}
+ });
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ensureExtraMenus);else ensureExtraMenus();
