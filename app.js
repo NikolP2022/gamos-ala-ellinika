@@ -631,7 +631,7 @@ function syncThreeWayData(base,local,remote){
   return out;
 }
 async function syncCall(body){
-  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
+  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":"sb_publishable__nczNPWr3do_hqi6MCS0AQ_fjYCXhGk","Authorization":"Bearer sb_publishable__nczNPWr3do_hqi6MCS0AQ_fjYCXhGk"},body:JSON.stringify(body),cache:"no-store"});
   let j={};try{j=await r.json()}catch{}
   if(!r.ok){const e=new Error(j.error||"Σφάλμα συγχρονισμού");e.syncResponse=j;throw e}
   return j;
@@ -724,6 +724,19 @@ function syncScreen(){
   };
   if($("syncChange"))$("syncChange").onclick=()=>{localStorage.removeItem(SYNC_TOKEN_KEY);localStorage.removeItem(SYNC_REV_KEY);window.__lastSyncSnapshot=null;syncScreen()};
 }
+
+// ΑΥΤΟΜΑΤΟΣ ΣΥΓΧΡΟΝΙΣΜΟΣ ΚΑΘΕ ΑΠΟΘΗΚΕΥΣΗΣ
+(function(){
+  const nativeSet=Storage.prototype.setItem;
+  Storage.prototype.setItem=function(k,v){
+    nativeSet.call(this,k,v);
+    if(this!==localStorage || syncBusy || typeof syncPush!=="function") return;
+    if(k===SYNC_TOKEN_KEY||k===SYNC_REV_KEY||k===SYNC_DEVICE_KEY) return;
+    clearTimeout(window.__syncSaveTimer);
+    window.__syncSaveTimer=setTimeout(()=>syncPush(),250);
+  };
+})();
+
 window.syncScreen=syncScreen;
 (function(){
   setTimeout(async()=>{
