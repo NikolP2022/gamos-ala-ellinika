@@ -440,7 +440,7 @@ function ensureAppointmentsMenu(){
  if(!b){b=document.createElement("button");b.id="appointmentsBtn";b.className="menu-item";b.type="button";b.textContent="📅 ΡΑΝΤΕΒΟΥ";menu.insertBefore(b,menu.querySelector("#collaboratorsBtn")||null)}
  b.onclick=()=>{menu.classList.add("hidden");appointments()};
 }
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ensureAppointmentsMenu);else ensureAppointmentsMenu();
+
 
 
 
@@ -545,7 +545,7 @@ function ensureExtraMenus(){
    if(b){b.id=id;b.onclick=()=>{menu.classList.add("hidden");fn()}}
  });
 }
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ensureExtraMenus);else ensureExtraMenus();
+
 
 
 // ===== ΕΚΚΙΝΗΣΗ ΕΦΑΡΜΟΓΗΣ =====
