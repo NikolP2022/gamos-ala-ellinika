@@ -118,53 +118,60 @@ function dailyAddSection(rows,title,items,getLabel){
   });
   rows.appendChild(box);
 }
-function dailyTime(x){return x.time || (x.fields&&x.fields["Ώρα Μυστήριου"]) || ""}
+function dailyTime(x){
+  if(!x)return "";
+  if(x.time)return String(x.time);
+  if(x.fields){
+    for(const k of Object.keys(x.fields)){
+      if(/ώρα/i.test(k)&&/^\d{2}:\d{2}$/.test(String(x.fields[k]||"")))return String(x.fields[k]);
+    }
+  }
+  return "";
+}
+function dailyDate(x){
+  if(!x)return "";
+  if(x.date)return String(x.date);
+  if(x.fields){
+    for(const k of Object.keys(x.fields)){
+      if(/ημερομηνία/i.test(k)&&/^\d{4}-\d{2}-\d{2}$/.test(String(x.fields[k]||"")))return String(x.fields[k]);
+    }
+  }
+  return "";
+}
 function renderDaily(){
   const date=$("scheduleDate").value,rows=$("scheduleRows");rows.innerHTML="";
   const events=[];
-  const pushEvent=(time,label,action)=>events.push({time:time||"",label,action});
-  data.filter(x=>x.date===date).forEach(x=>pushEvent(dailyTime(x),eventTitle(x)+(dailyTime(x)?" — "+dailyTime(x):""),()=>detail(x)));
-  getAppts(APPT_MYSTERY_KEY).forEach((x,i)=>{if(x.date===date)pushEvent(x.time,"📞 "+(x.name||"Ραντεβού Μυστηρίου")+(x.time?" — "+x.time:"")+(x.mystery?" — "+x.mystery:""),()=>openAppointment("mystery",i));});
-  getAppts(APPT_PARTNER_KEY).forEach((x,i)=>{if(x.date===date)pushEvent(x.time,"👥 "+(x.name||"Ραντεβού Συνεργάτη")+(x.time?" — "+x.time:""),()=>openAppointment("partner",i));});
-  arrKey(TASKS_KEY).forEach(x=>{if(x.date===date)pushEvent(x.time,"📋 "+(x.name||x.category||"Εκκρεμότητα")+(x.time?" — "+x.time:""),null);});
-  arrKey(DELIVERIES_KEY).forEach(x=>{if(x.date===date)pushEvent(x.time,"📦 "+(x.name||x.category||"Παράδοση")+(x.time?" — "+x.time:""),null);});
-
-  // Οποιαδήποτε μελλοντική καταχώριση σε φάκελο που έχει date + time
-  // εμφανίζεται επίσης στο Ημερήσιο Ημερολόγιο, χωρίς να χρειάζεται ειδικός κώδικας.
+  const pushEvent=(time,label,action)=>{if(!time)return;events.push({time:String(time),label,action})};
+  data.forEach(x=>{const d=dailyDate(x),t=dailyTime(x);if(d===date&&t)pushEvent(t,eventTitle(x)+" — "+t,()=>detail(x));});
+  getAppts(APPT_MYSTERY_KEY).forEach((x,i)=>{if(x.date===date&&x.time)pushEvent(x.time,"📞 "+(x.name||"Ραντεβού Μυστηρίου")+" — "+x.time+(x.mystery?" — "+x.mystery:""),()=>openAppointment("mystery",i));});
+  getAppts(APPT_PARTNER_KEY).forEach((x,i)=>{if(x.date===date&&x.time)pushEvent(x.time,"👥 "+(x.name||"Ραντεβού Συνεργάτη")+" — "+x.time,()=>openAppointment("partner",i));});
+  arrKey(TASKS_KEY).forEach(x=>{if(x.date===date&&x.time)pushEvent(x.time,"📋 "+(x.name||x.category||"Εκκρεμότητα")+" — "+x.time,null);});
+  arrKey(DELIVERIES_KEY).forEach(x=>{if(x.date===date&&x.time)pushEvent(x.time,"📦 "+(x.name||x.category||"Παράδοση")+" — "+x.time,null);});
   const handledKeys=new Set([KEY,DAYKEY,APPT_MYSTERY_KEY,APPT_PARTNER_KEY,TASKS_KEY,DELIVERIES_KEY,"gamos_collaborators_v1","gamos_happy_orders_v2","gamos_sync_token"]);
   for(let i=0;i<localStorage.length;i++){
     const k=localStorage.key(i);
     if(!k||handledKeys.has(k))continue;
     try{
-      const raw=JSON.parse(localStorage.getItem(k));
+      const raw=JSON.parse(localStorage.getItem(k)||"null");
       if(!Array.isArray(raw))continue;
-      raw.forEach(x=>{
-        if(x&&x.date===date&&x.time){
-          const label="📌 "+(x.name||x.title||x.category||k)+(x.time?" — "+x.time:"");
-          pushEvent(x.time,label,null);
-        }
-      });
+      raw.forEach(x=>{const d=dailyDate(x),t=dailyTime(x);if(d===date&&t)pushEvent(t,"📌 "+(x.name||x.title||x.category||k)+" — "+t,null);});
     }catch(e){}
   }
-
   events.sort((a,b)=>(timeToMinutes(a.time)??1440)-(timeToMinutes(b.time)??1440));
   for(let h=0;h<=23;h++){
     const t=String(h).padStart(2,"0")+":00";
     const r=document.createElement("div");r.className="schedule-row";
     r.innerHTML='<span>'+t+'</span><div class="schedule-cell"><div class="schedule-events"></div><input type="text" autocomplete="off" placeholder="Γράψε εδώ για τις '+t+'..."></div>';
-    const cell=r.querySelector(".schedule-cell"),evBox=r.querySelector(".schedule-events");
-    events.filter(e=>{const tm=timeToMinutes(e.time);return tm!==null?tm>=h*60&&tm<h*60+60:h===0}).forEach(e=>{
-      const b=document.createElement("button");b.type="button";b.className="event daily-event";b.textContent=e.label;
-      b.onclick=()=>{if(e.action)e.action()};evBox.appendChild(b);
+    const evBox=r.querySelector(".schedule-events");
+    events.filter(e=>{const tm=timeToMinutes(e.time);return tm!==null&&tm>=h*60&&tm<h*60+60}).forEach(e=>{
+      const b=document.createElement("button");b.type="button";b.className="event daily-event";b.textContent=e.label;b.onclick=()=>{if(e.action)e.action()};evBox.appendChild(b);
     });
-    const input=r.querySelector("input");
-    input.value=(daily[date]||{})[t]||"";
+    const input=r.querySelector("input");input.value=(daily[date]||{})[t]||"";
     const persist=async()=>{daily[date]=daily[date]||{};daily[date][t]=input.value;localStorage.setItem(DAYKEY,JSON.stringify(daily));window.__lastSyncSnapshot="";if(typeof syncPush==="function")await syncPush()};
-    input.addEventListener("input",persist);input.addEventListener("change",persist);input.addEventListener("blur",persist);
-    rows.appendChild(r);
+    input.addEventListener("input",persist);input.addEventListener("change",persist);input.addEventListener("blur",persist);rows.appendChild(r);
   }
 }
-function init(){ $("newBtn").onclick=()=>show("typeView"); $("calendarBtn").onclick=()=>{calendar();show("calendarView")}; $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden"); $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden"); $("mysteriesBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");show("typeView")}; document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type)); $("collaboratorsBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");collaborators()}; $("happyBoxBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");happyBox()}; document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back)); $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()}; $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()}; const now=new Date();$("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);$("scheduleDate").onchange=renderDaily;renderDaily();calendar()}
+function init(){ $("newBtn").onclick=()=>show("typeView"); $("calendarBtn").onclick=()=>{calendar();show("calendarView")}; $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden"); $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden"); $("mysteriesBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");show("typeView")}; document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type)); $("collaboratorsBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");collaborators()}; $("happyBoxBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");happyBox()}; document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back)); $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()}; $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()}; const now=new Date();$("scheduleDate").classList.add("date-picker");$("scheduleDate").readOnly=true;$("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);activateDateTimePickers(document);$("scheduleDate").onchange=renderDaily;renderDaily();calendar()}
 window.show=show;window.form=form;window.calendar=calendar;window.detail=detail;
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{init();ensureHappyMenu()});else{init();ensureHappyMenu()}
 
@@ -429,7 +436,7 @@ function openSimpleFolder(kind,i,cats,key,existing,adding){
   $("saveSimple").onclick=()=>{
     const item={...x,name:$("simpleName").value,date:$("simpleDate")?$("simpleDate").value:"",time:$("simpleTime")?$("simpleTime").value:"",notes:$("simpleNotes").value};
     if(!adding){const idx=arr.findIndex(z=>z.id===x.id);if(idx>=0)arr[idx]=item;else arr.push(item)}else arr.push(item);
-    saveArr(key,arr);simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);
+    saveArr(key,arr);simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);renderDaily();
   };
   if($("delSimple")) $("delSimple").onclick=()=>{saveArr(key,arr.filter(z=>z.id!==x.id));simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind)};
 }
