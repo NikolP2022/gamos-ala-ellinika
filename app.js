@@ -87,7 +87,7 @@ function openClock24(input){
     document.body.appendChild(ov);
     ov.addEventListener("click",e=>{if(e.target===ov)ov.classList.remove("open")});
     ov.querySelector("#clock24Close").onclick=()=>ov.classList.remove("open");
-    ov.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const h=ov.dataset.hour||"00";input.value=h+":"+b.dataset.m;ov.querySelector("#clock24Value").textContent=input.value});
+    ov.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const h=ov.dataset.hour||"00";input.value=h+":"+b.dataset.m;ov.querySelector("#clock24Value").textContent=input.value;input.dispatchEvent(new Event("input",{bubbles:true}));input.dispatchEvent(new Event("change",{bubbles:true}))});
   }
   ov.dataset.inputId="clockTarget";
   ov.dataset.hour=input.value?input.value.slice(0,2):"00";
@@ -97,7 +97,7 @@ function openClock24(input){
     const b=document.createElement("button");b.type="button";b.className="clock24-hour";
     const angle=(h/24)*360-90; b.style.setProperty("--a",angle+"deg");
     b.textContent=String(h).padStart(2,"0");
-    b.onclick=()=>{ov.dataset.hour=String(h).padStart(2,"0");ov.querySelector("#clock24Value").textContent=ov.dataset.hour+":00";input.value=ov.dataset.hour+":00"};
+    b.onclick=()=>{ov.dataset.hour=String(h).padStart(2,"0");ov.querySelector("#clock24Value").textContent=ov.dataset.hour+":00";input.value=ov.dataset.hour+":00";input.dispatchEvent(new Event("input",{bubbles:true}));input.dispatchEvent(new Event("change",{bubbles:true}))};
     face.appendChild(b);
   }
   ov.classList.add("open");
