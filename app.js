@@ -15,10 +15,52 @@ function save(){localStorage.setItem(KEY,JSON.stringify(data));localStorage.remo
 function show(id){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));const el=$(id);if(el)el.classList.remove("hidden");window.scrollTo(0,0)}
 function field(q,v=""){if(q.endsWith("□"))return '<div class="field check"><label><input type="checkbox" name="'+esc(q)+'" '+(v==="ΝΑΙ"?"checked":"")+'><span>'+esc(q.replace(" □",""))+'</span></label></div>';if(q==="ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ"||q==="ΣΗΜΕΙΩΣΕΙΣ")return '<div class="field full"><label>'+q+'</label><textarea name="'+q+'">'+esc(v)+'</textarea></div>';if(q==="Δεξίωση ΝΑΙ ΟΧΙ"||q==="Εξοφλήθηκε ΝΑΙ ΟΧΙ")return '<div class="field"><label>'+q+'</label><select name="'+q+'"><option></option><option '+(v==="ΝΑΙ"?"selected":"")+'>ΝΑΙ</option><option '+(v==="ΟΧΙ"?"selected":"")+'>ΟΧΙ</option></select></div>';let t=/ημερομηνία/i.test(q)?"date":/ώρα/i.test(q)?"time":/email/i.test(q)?"email":/ποσό/i.test(q)?"number":"text";return '<div class="field"><label>'+q+'</label><input type="'+t+'" name="'+esc(q)+'" value="'+esc(v)+'"></div>'}
 function activateDateTimePickers(root){
-  (root||document).querySelectorAll('input[type="date"],input[type="time"]').forEach(inp=>{
+  const scope=root||document;
+  scope.querySelectorAll('input[type="date"]').forEach(inp=>{
     inp.addEventListener("click",()=>{try{if(inp.showPicker)inp.showPicker()}catch(e){}});
     inp.addEventListener("focus",()=>{try{if(inp.showPicker)inp.showPicker()}catch(e){}});
   });
+  scope.querySelectorAll('input[type="time"]').forEach(inp=>{
+    inp.readOnly=true;
+    inp.inputMode="none";
+    inp.addEventListener("click",e=>{e.preventDefault();openClock24(inp)});
+    inp.addEventListener("focus",()=>openClock24(inp));
+  });
+}
+function openClock24(input){
+  let ov=document.getElementById("clock24Overlay");
+  if(!ov){
+    ov=document.createElement("div");ov.id="clock24Overlay";ov.className="clock24-overlay";
+    ov.innerHTML='<div class="clock24-card"><div class="clock24-title">🕐 ΕΠΙΛΟΓΗ ΩΡΑΣ</div><div id="clock24Value" class="clock24-value">00:00</div><div id="clock24Face" class="clock24-face"></div><div id="clock24Minutes" class="clock24-minutes"><button data-m="00">00</button><button data-m="15">15</button><button data-m="30">30</button><button data-m="45">45</button></div><button id="clock24Close" class="clock24-close">✓ ΕΠΙΛΟΓΗ</button></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener("click",e=>{if(e.target===ov)ov.classList.remove("open")});
+    ov.querySelector("#clock24Close").onclick=()=>ov.classList.remove("open");
+    ov.querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{const h=ov.dataset.hour||"00";input.value=h+":"+b.dataset.m;ov.querySelector("#clock24Value").textContent=input.value});
+  }
+  ov.dataset.inputId="clockTarget";
+  ov.dataset.hour=input.value?input.value.slice(0,2):"00";
+  const val=input.value||"00:00";ov.querySelector("#clock24Value").textContent=val;
+  const face=ov.querySelector("#clock24Face");face.innerHTML="";
+  for(let h=0;h<24;h++){
+    const b=document.createElement("button");b.type="button";b.className="clock24-hour";
+    const angle=(h/24)*360-90; b.style.setProperty("--a",angle+"deg");
+    b.textContent=String(h).padStart(2,"0");
+    b.onclick=()=>{ov.dataset.hour=String(h).padStart(2,"0");ov.querySelector("#clock24Value").textContent=ov.dataset.hour+":00";input.value=ov.dataset.hour+":00"};
+    face.appendChild(b);
+  }
+  ov.classList.add("open");
+}
+if(!document.getElementById("clock24Style")){
+  const st=document.createElement("style");st.id="clock24Style";st.textContent=`
+.clock24-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);display:none;align-items:center;justify-content:center;z-index:99999;padding:18px}
+.clock24-overlay.open{display:flex}.clock24-card{width:min(94vw,430px);background:#fff;border-radius:24px;padding:20px;box-shadow:0 18px 60px rgba(0,0,0,.3);text-align:center}
+.clock24-title{font-size:20px;font-weight:800}.clock24-value{font-size:34px;font-weight:900;margin:8px 0 10px}
+.clock24-face{width:min(82vw,330px);height:min(82vw,330px);max-height:330px;max-width:330px;margin:auto;border-radius:50%;position:relative;background:#f4f7f5;border:5px solid #d9e4dd}
+.clock24-hour{position:absolute;left:50%;top:50%;width:42px;height:42px;border-radius:50%;border:0;background:#fff;font-weight:800;transform:translate(-50%,-50%) rotate(var(--a)) translateY(-135px) rotate(calc(-1 * var(--a)));box-shadow:0 2px 7px rgba(0,0,0,.15)}
+.clock24-hour:active{transform:translate(-50%,-50%) rotate(var(--a)) translateY(-135px) rotate(calc(-1 * var(--a))) scale(.92)}
+.clock24-minutes{display:flex;justify-content:center;gap:8px;margin:14px 0}.clock24-minutes button,.clock24-close{border:0;border-radius:12px;padding:10px 14px;font-weight:800;background:#eef4f0}
+.clock24-close{width:100%;font-size:17px;background:#dcebe2}
+`;document.head.appendChild(st);
 }
 function form(type,item){const [title,sections]=schemas[type];const f=item?.fields||{};let h='<h2>'+title+'</h2><form id="mform">';sections.forEach(([s,fs])=>{h+='<div class="form-section"><h3>'+s+'</h3><div class="fields">'+fs.map(q=>field(q,f[q])).join("")+'</div></div>'});h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ</button></form>';$("formMount").innerHTML=h;show("formView");activateDateTimePickers($("formMount"));$("mform").onsubmit=e=>{e.preventDefault();const fd=new FormData(e.target),fields={};fd.forEach((v,k)=>fields[k]=v);e.target.querySelectorAll('input[type="checkbox"]').forEach(c=>fields[c.name]=c.checked?"ΝΑΙ":"ΟΧΙ");if(!fields["Ημερομηνία μυστήριου"]){alert("Συμπλήρωσε την ημερομηνία του μυστηρίου.");return}const x={id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),type,date:fields["Ημερομηνία μυστήριου"],fields};if(item)data=data.map(a=>a.id===item.id?x:a);else data.push(x);save();month=new Date(x.date+"T00:00:00");calendar();show("calendarView")}}
 function eventTitle(x){const f=x.fields;if(x.type==="baptism")return "🕊️ "+(f["Όνομα παιδιού"]||"Βάπτιση");if(x.type==="weddingBaptism")return "💍🕊️ "+[f["Όνομα Γαμπρού"],f["Όνομα Νύφης"]].filter(Boolean).join(" & ")||"Γάμος & Βάπτιση";return (x.type==="civilWedding"?"🏛️ ":"💍 ")+[f["Όνομα Γαμπρού"],f["Όνομα Νύφης"]].filter(Boolean).join(" & ")||schemas[x.type][0]}
