@@ -574,7 +574,6 @@ window.pending=pending;window.deliveries=deliveries;window.disks=disks;
 const SYNC_URL="https://vbkuvexyqehmpeeejqbh.supabase.co/functions/v1/gamos-sync";
 const SYNC_TOKEN_KEY="gamos_sync_token_v2";
 const SYNC_REV_KEY="gamos_sync_revision_v2";
-const SYNC_DEVICE_KEY="";
 let syncBusy=false,syncTimer=null,syncRevision=Number(localStorage.getItem(SYNC_REV_KEY)||0);
 
 function syncToken(){return (localStorage.getItem(SYNC_TOKEN_KEY)||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
@@ -588,7 +587,7 @@ function syncAllLocalStorage(){
 }
 function syncApplyAll(obj){
   Object.entries(obj||{}).forEach(([k,v])=>{
-    if(k!==SYNC_TOKEN_KEY&&k!==SYNC_REV_KEY&&v!=null)localStorage.setItem(k,v);
+    if(k!==SYNC_TOKEN_KEY&&k!==SYNC_REV_KEY&&v!=null)localStorage.setItem(k,String(v));
   });
 }
 function syncParse(v){try{return JSON.parse(v)}catch{return v}}
@@ -601,34 +600,37 @@ function syncArrayById(v){
 function syncThreeWayValue(base,local,remote){
   if(syncEqual(local,base))return remote;
   if(syncEqual(remote,base))return local;
-  if(Array.isArray(base)||Array.isArray(local)||Array.isArray(remote)){
-    const bm=syncArrayById(base),lm=syncArrayById(local),rm=syncArrayById(remote);
-    const ids=new Set([...bm.keys(),...lm.keys(),...rm.keys()]),out=[];
+  const b=syncParse(base),l=syncParse(local),r=syncParse(remote);
+  if(Array.isArray(b)||Array.isArray(l)||Array.isArray(r)){
+    const bm=syncArrayById(b),lm=syncArrayById(l),rm=syncArrayById(r);
+    const ids=[...new Set([...bm.keys(),...lm.keys(),...rm.keys()])],out=[];
     for(const id of ids){
       const hb=bm.has(id),hl=lm.has(id),hr=rm.has(id);
-      const b=hb?bm.get(id):undefined,l=hl?lm.get(id):undefined,r=hr?rm.get(id):undefined;
-      const lc=hl!==hb||!syncEqual(l,b),rc=hr!==hb||!syncEqual(r,b);
-      if(lc&&!rc){if(hl)out.push(l);continue}
-      if(rc&&!lc){if(hr)out.push(r);continue}
-      if(!lc&&!rc){if(hb)out.push(b);continue}
-      if(hl)out.push(l); else if(hr)out.push(r);
+      const bv=hb?bm.get(id):undefined,lv=hl?lm.get(id):undefined,rv=hr?rm.get(id):undefined;
+      const lc=hl!==hb||!syncEqual(lv,bv),rc=hr!==hb||!syncEqual(rv,bv);
+      if(lc&&!rc){if(hl)out.push(lv);continue}
+      if(rc&&!lc){if(hr)out.push(rv);continue}
+      if(!lc&&!rc){if(hb)out.push(bv);continue}
+      if(hl&&hr)out.push(syncThreeWayValue(JSON.stringify(bv),JSON.stringify(lv),JSON.stringify(rv)) instanceof String?lv:lv);
     }
     return JSON.stringify(out);
   }
-  const a=syncParse(base),l=syncParse(local),r=syncParse(remote);
-  if(a&&typeof a==="object"&&l&&typeof l==="object"&&r&&typeof r==="object"){
-    const o={};new Set([...Object.keys(a),...Object.keys(l),...Object.keys(r)]).forEach(k=>{
-      if(syncEqual(l[k],a[k]))o[k]=r[k];else if(syncEqual(r[k],a[k]))o[k]=l[k];else o[k]=l[k];
-    });return JSON.stringify(o);
+  if(b&&typeof b==="object"&&l&&typeof l==="object"&&r&&typeof r==="object"){
+    const o={};
+    for(const k of new Set([...Object.keys(b),...Object.keys(l),...Object.keys(r)])){
+      const v=syncThreeWayValue(b[k],l[k],r[k]);
+      if(v!==undefined)o[k]=syncParse(v); 
+    }
+    return JSON.stringify(o);
   }
   return local;
 }
 function syncThreeWayData(base,local,remote){
   const out={...(remote||{})};
-  new Set([...Object.keys(base||{}),...Object.keys(local||{}),...Object.keys(remote||{})]).forEach(k=>{
+  for(const k of new Set([...Object.keys(base||{}),...Object.keys(local||{}),...Object.keys(remote||{})])){
     const v=syncThreeWayValue(base?.[k],local?.[k],remote?.[k]);
     if(v===undefined)delete out[k];else out[k]=v;
-  });
+  }
   return out;
 }
 async function syncCall(body){
@@ -637,13 +639,16 @@ async function syncCall(body){
   if(!r.ok){const e=new Error(j.error||"Σφάλμα συγχρονισμού");e.syncResponse=j;throw e}
   return j;
 }
+function syncSetRevision(n){
+  syncRevision=Number(n||0);
+  localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+}
 async function syncPull(){
   const code=syncToken();if(!code||syncBusy)return false;
   syncBusy=true;
   try{
     const j=await syncCall({action:"pull",code});
-    syncApplyAll(j.data||{});syncRevision=Number(j.revision||0);
-    localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+    syncApplyAll(j.data||{});syncSetRevision(j.revision||0);
     window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
     if(typeof renderDaily==="function")renderDaily();
     return true;
@@ -654,90 +659,112 @@ async function syncPush(){
   const code=syncToken();if(!code||syncBusy)return false;
   syncBusy=true;
   try{
-    const base=window.__lastSyncSnapshot?JSON.parse(window.__lastSyncSnapshot):syncAllLocalStorage();
+    const base=window.__lastSyncSnapshot?JSON.parse(window.__lastSyncSnapshot):{};
     const local=syncAllLocalStorage();
     let remote=await syncCall({action:"pull",code});
     let merged=syncThreeWayData(base,local,remote.data||{});
-    try{
-      const j=await syncCall({action:"push",code,data:merged,base_revision:Number(remote.revision||0)});
-      syncApplyAll(j.data||merged);syncRevision=Number(j.revision||0);
-      localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
-      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-      if(typeof renderDaily==="function")renderDaily();
-      return true;
-    }catch(e){
-      if(!e.syncResponse?.conflict)throw e;
-      remote=e.syncResponse;merged=syncThreeWayData(base,local,remote.data||{});
-      const j=await syncCall({action:"push",code,data:merged,base_revision:Number(remote.revision||0)});
-      syncApplyAll(j.data||merged);syncRevision=Number(j.revision||0);
-      localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
-      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-      if(typeof renderDaily==="function")renderDaily();
-      return true;
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        const j=await syncCall({action:"push",code,data:merged,base_revision:Number(remote.revision||0)});
+        syncApplyAll(j.data||merged);syncSetRevision(j.revision||0);
+        window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+        if(typeof renderDaily==="function")renderDaily();
+        return true;
+      }catch(e){
+        if(!e.syncResponse?.conflict)throw e;
+        remote=e.syncResponse;
+        merged=syncThreeWayData(base,local,remote.data||{});
+      }
     }
+    throw new Error("Η συσκευή άλλαξε ταυτόχρονα. Δοκίμασε ξανά.");
   }catch(e){console.warn("Cloud sync push:",e.message);return false}
   finally{syncBusy=false}
 }
 async function syncReconcile(){
-  const code=syncToken();if(!code||syncBusy)return;
+  const code=syncToken();if(!code||syncBusy)return false;
   const now=JSON.stringify(syncAllLocalStorage());
-  if(window.__lastSyncSnapshot&&now!==window.__lastSyncSnapshot)await syncPush();
-  else await syncPull();
+  if(window.__lastSyncSnapshot&&now!==window.__lastSyncSnapshot)return await syncPush();
+  return await syncPull();
 }
 function newSyncCode(){
   const chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let out="";
   const a=new Uint32Array(12);crypto.getRandomValues(a);
   a.forEach(n=>out+=chars[n%chars.length]);return out;
 }
+async function syncJoinCode(code){
+  code=String(code||"").toUpperCase().replace(/[^A-Z0-9]/g,"");
+  if(code.length<10)throw new Error("Ο κωδικός πρέπει να έχει τουλάχιστον 10 χαρακτήρες.");
+  const remote=await syncCall({action:"pull",code});
+  const local=syncAllLocalStorage();
+  const hasLocal=Object.keys(local).length>0;
+  localStorage.setItem(SYNC_TOKEN_KEY,code);
+  if(!hasLocal){
+    syncApplyAll(remote.data||{});syncSetRevision(remote.revision||0);
+  }else{
+    const merged=syncThreeWayData(remote.data||{},local,remote.data||{});
+    const j=await syncCall({action:"push",code,data:merged,base_revision:Number(remote.revision||0)});
+    syncApplyAll(j.data||merged);syncSetRevision(j.revision||0);
+  }
+  window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+  if(typeof renderDaily==="function")renderDaily();
+  return true;
+}
 function syncScreen(){
   const code=syncToken();
   let h="<button class=\"back\" id=\"syncBack\">← ΜΕΝΟΥ</button><h2>☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ</h2>";
   h+="<div style=\"max-width:650px;margin:20px auto;padding:20px;background:#fffdf9;border:1px solid #ddcfbf;border-radius:16px\">";
-  h+="<p style=\"font-size:18px;line-height:1.5\"><b>Όλες οι συσκευές σου μπορούν να βλέπουν τα ίδια δεδομένα.</b><br>Χρησιμοποίησε τον ίδιο κωδικό συγχρονισμού σε κάθε κινητό ή υπολογιστή.</p>";
+  h+="<p style=\"font-size:18px;line-height:1.5\"><b>Ένας κωδικός = όλες οι συσκευές σου.</b><br>Στην πρώτη συσκευή πάτησε «ΔΗΜΙΟΥΡΓΙΑ». Στις υπόλοιπες βάλε <b>τον ίδιο ακριβώς κωδικό</b> και πάτησε «ΣΥΝΔΕΣΗ».</p>";
   if(code){
     h+="<label style=\"font-weight:bold\">ΚΩΔΙΚΟΣ ΣΥΓΧΡΟΝΙΣΜΟΥ</label><input id=\"syncCodeInput\" value=\""+esc(code)+"\" maxlength=\"16\" style=\"width:100%;padding:15px;margin:8px 0 14px;border:1px solid #cfc1b2;border-radius:10px;font-size:20px;letter-spacing:2px;text-transform:uppercase\">";
     h+="<button class=\"primary big\" id=\"syncNow\">☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΤΩΡΑ</button>";
+    h+="<button class=\"secondary big\" id=\"syncJoinAgain\">🔗 ΣΥΝΔΕΣΗ ΜΕ ΑΥΤΟΝ ΤΟΝ ΚΩΔΙΚΟ</button>";
     h+="<button class=\"secondary big\" id=\"syncChange\">🔑 ΑΛΛΑΓΗ / ΣΥΝΔΕΣΗ ΑΛΛΟΥ ΚΩΔΙΚΟΥ</button>";
   }else{
-    h+="<button class=\"primary big\" id=\"syncCreate\">🔐 ΔΗΜΙΟΥΡΓΙΑ ΚΩΔΙΚΟΥ ΓΙΑ ΤΙΣ ΣΥΣΚΕΥΕΣ ΜΟΥ</button>";
-    h+="<p style=\"font-size:16px;line-height:1.5\">Μετά τη δημιουργία, θα εμφανιστεί ο κωδικός. Κράτησέ τον και βάλε τον ίδιο κωδικό στις άλλες συσκευές.</p>";
+    h+="<button class=\"primary big\" id=\"syncCreate\">🔐 ΔΗΜΙΟΥΡΓΙΑ ΝΕΟΥ ΚΩΔΙΚΟΥ</button>";
+    h+="<button class=\"secondary big\" id=\"syncJoin\">🔗 ΣΥΝΔΕΣΗ ΜΕ ΥΠΑΡΧΟΝΤΑ ΚΩΔΙΚΟ</button>";
   }
   h+="<div id=\"syncMsg\" style=\"margin-top:14px;font-weight:bold\"></div></div>";
   $("detailMount").innerHTML=h;show("detailView");
   $("syncBack").onclick=()=>show("homeView");
-  const msg=t=>{$("syncMsg").textContent=t};
+  const msg=t=>{const m=$("syncMsg");if(m)m.textContent=t};
   if($("syncCreate"))$("syncCreate").onclick=async()=>{
-    const c=newSyncCode();msg("Δημιουργία ασφαλούς χώρου…");
+    const c=newSyncCode();msg("Δημιουργία χώρου συγχρονισμού…");
     try{
       const j=await syncCall({action:"create",code:c,data:syncAllLocalStorage()});
-      localStorage.setItem(SYNC_TOKEN_KEY,c);syncRevision=Number(j.revision||1);localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+      localStorage.setItem(SYNC_TOKEN_KEY,c);syncSetRevision(j.revision||1);
       window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-      alert("Ο κωδικός συγχρονισμού σου είναι:\n\n"+c+"\n\nΧρησιμοποίησε τον ίδιο κωδικό στις άλλες συσκευές.");
       syncScreen();
-    }catch(e){msg("Δεν δημιουργήθηκε ο κωδικός: "+e.message)}
+      alert("Ο κωδικός σου είναι:\n\n"+c+"\n\nΣτις άλλες συσκευές πάτησε «ΣΥΝΔΕΣΗ ΜΕ ΥΠΑΡΧΟΝΤΑ ΚΩΔΙΚΟ» και βάλε ΑΚΡΙΒΩΣ αυτόν τον κωδικό.");
+    }catch(e){msg("Δεν δημιουργήθηκε: "+e.message)}
   };
+  const doJoin=async()=>{
+    const c=$("syncCodeInput")?$("syncCodeInput").value:prompt("Βάλε τον κωδικό της πρώτης συσκευής:");
+    if(!c)return;
+    msg("Σύνδεση και λήψη δεδομένων…");
+    try{await syncJoinCode(c);msg("🟢 ΣΥΝΔΕΘΗΚΕ — τα δεδομένα είναι κοινά στις συσκευές.");syncScreen()}
+    catch(e){msg("🔴 ΔΕΝ ΣΥΝΔΕΘΗΚΕ: "+e.message)}
+  };
+  if($("syncJoin"))$("syncJoin").onclick=doJoin;
+  if($("syncJoinAgain"))$("syncJoinAgain").onclick=doJoin;
   if($("syncNow"))$("syncNow").onclick=async()=>{
     const c=$("syncCodeInput").value.toUpperCase().replace(/[^A-Z0-9]/g,"");
-    if(c.length<10){msg("Ο κωδικός πρέπει να έχει τουλάχιστον 10 χαρακτήρες.");return}
-    localStorage.setItem(SYNC_TOKEN_KEY,c);msg("Συγχρονισμός…");
-    const ok=await syncReconcile();msg(ok===false?"Έγινε προσπάθεια συγχρονισμού. Έλεγξε τον κωδικό.":"Ο συγχρονισμός ολοκληρώθηκε.");
-    if(ok!==false)await syncPull();
+    if(c!==syncToken()){await doJoin();return}
+    msg("Συγχρονισμός…");const ok=await syncReconcile();
+    msg(ok?"🟢 ΣΥΓΧΡΟΝΙΣΜΟΣ ΟΛΟΚΛΗΡΩΘΗΚΕ":"🔴 ΑΠΟΤΥΧΙΑ ΣΥΓΧΡΟΝΙΣΜΟΥ — έλεγξε τον κωδικό.");
+    if(ok)syncScreen();
   };
   if($("syncChange"))$("syncChange").onclick=()=>{localStorage.removeItem(SYNC_TOKEN_KEY);localStorage.removeItem(SYNC_REV_KEY);window.__lastSyncSnapshot=null;syncScreen()};
 }
-
-// ΑΥΤΟΜΑΤΟΣ ΣΥΓΧΡΟΝΙΣΜΟΣ ΚΑΘΕ ΑΠΟΘΗΚΕΥΣΗΣ
 (function(){
   const nativeSet=Storage.prototype.setItem;
   Storage.prototype.setItem=function(k,v){
     nativeSet.call(this,k,v);
-    if(this!==localStorage || syncBusy || typeof syncPush!=="function") return;
-    if(k===SYNC_TOKEN_KEY||k===SYNC_REV_KEY) return;
+    if(this!==localStorage||syncBusy||typeof syncPush!=="function")return;
+    if(k===SYNC_TOKEN_KEY||k===SYNC_REV_KEY)return;
     clearTimeout(window.__syncSaveTimer);
-    window.__syncSaveTimer=setTimeout(()=>syncPush(),250);
+    window.__syncSaveTimer=setTimeout(()=>syncPush(),600);
   };
 })();
-
 window.syncScreen=syncScreen;
 (function(){
   setTimeout(async()=>{
