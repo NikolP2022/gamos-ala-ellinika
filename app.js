@@ -13,19 +13,49 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
 function save(){localStorage.setItem(KEY,JSON.stringify(data));localStorage.removeItem("gamos_ala_ellinika_v2")}
 function show(id){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));const el=$(id);if(el)el.classList.remove("hidden");window.scrollTo(0,0)}
-function field(q,v=""){if(q.endsWith("□"))return '<div class="field check"><label><input type="checkbox" name="'+esc(q)+'" '+(v==="ΝΑΙ"?"checked":"")+'><span>'+esc(q.replace(" □",""))+'</span></label></div>';if(q==="ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ"||q==="ΣΗΜΕΙΩΣΕΙΣ")return '<div class="field full"><label>'+q+'</label><textarea name="'+q+'">'+esc(v)+'</textarea></div>';if(q==="Δεξίωση ΝΑΙ ΟΧΙ"||q==="Εξοφλήθηκε ΝΑΙ ΟΧΙ")return '<div class="field"><label>'+q+'</label><select name="'+q+'"><option></option><option '+(v==="ΝΑΙ"?"selected":"")+'>ΝΑΙ</option><option '+(v==="ΟΧΙ"?"selected":"")+'>ΟΧΙ</option></select></div>';let t=/ημερομηνία/i.test(q)?"date":/ώρα/i.test(q)?"time":/email/i.test(q)?"email":/ποσό/i.test(q)?"number":"text";return '<div class="field"><label>'+q+'</label><input type="'+t+'" name="'+esc(q)+'" value="'+esc(v)+'"></div>'}
+function field(q,v=""){if(q.endsWith("□"))return '<div class="field check"><label><input type="checkbox" name="'+esc(q)+'" '+(v==="ΝΑΙ"?"checked":"")+'><span>'+esc(q.replace(" □",""))+'</span></label></div>';if(q==="ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ"||q==="ΣΗΜΕΙΩΣΕΙΣ")return '<div class="field full"><label>'+q+'</label><textarea name="'+q+'">'+esc(v)+'</textarea></div>';if(q==="Δεξίωση ΝΑΙ ΟΧΙ"||q==="Εξοφλήθηκε ΝΑΙ ΟΧΙ")return '<div class="field"><label>'+q+'</label><select name="'+q+'"><option></option><option '+(v==="ΝΑΙ"?"selected":"")+'>ΝΑΙ</option><option '+(v==="ΟΧΙ"?"selected":"")+'>ΟΧΙ</option></select></div>';if(/ημερομηνία/i.test(q))return '<div class="field"><label>'+q+'</label><input type="text" class="date-picker" readonly autocomplete="off" name="'+esc(q)+'" value="'+esc(v)+'" placeholder="📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ"></div>';let t=/ώρα/i.test(q)?"time":/email/i.test(q)?"email":/ποσό/i.test(q)?"number":"text";return '<div class="field"><label>'+q+'</label><input type="'+t+'" name="'+esc(q)+'" value="'+esc(v)+'"></div>'}
 function activateDateTimePickers(root){
   const scope=root||document;
-  scope.querySelectorAll('input[type="date"]').forEach(inp=>{
-    inp.addEventListener("click",()=>{try{if(inp.showPicker)inp.showPicker()}catch(e){}});
-    inp.addEventListener("focus",()=>{try{if(inp.showPicker)inp.showPicker()}catch(e){}});
+  scope.querySelectorAll('input.date-picker').forEach(inp=>{
+    inp.addEventListener("click",e=>{e.preventDefault();openCalendarPicker(inp)});
+    inp.addEventListener("focus",()=>openCalendarPicker(inp));
   });
   scope.querySelectorAll('input[type="time"]').forEach(inp=>{
-    inp.readOnly=true;
-    inp.inputMode="none";
+    inp.readOnly=true; inp.inputMode="none";
     inp.addEventListener("click",e=>{e.preventDefault();openClock24(inp)});
     inp.addEventListener("focus",()=>openClock24(inp));
   });
+}
+function openCalendarPicker(input){
+  let ov=document.getElementById("datePickerOverlay");
+  if(!ov){
+    ov=document.createElement("div");ov.id="datePickerOverlay";ov.className="date-picker-overlay";
+    ov.innerHTML='<div class="date-picker-card"><div class="date-picker-head"><button type="button" id="datePrev">‹</button><b id="dateTitle"></b><button type="button" id="dateNext">›</button></div><div class="date-week"><b>ΔΕ</b><b>ΤΡ</b><b>ΤΕ</b><b>ΠΕ</b><b>ΠΑ</b><b>ΣΑ</b><b>ΚΥ</b></div><div id="dateGrid" class="date-grid"></div><button type="button" id="dateToday" class="date-today">ΣΗΜΕΡΑ</button><button type="button" id="dateClose" class="date-close">✓ ΕΠΙΛΟΓΗ</button></div>';
+    document.body.appendChild(ov);
+    ov.addEventListener("click",e=>{if(e.target===ov)ov.classList.remove("open")});
+  }
+  let base=input.value?new Date(input.value+"T12:00:00"):new Date();
+  if(Number.isNaN(base.getTime()))base=new Date();
+  ov.dataset.year=base.getFullYear();ov.dataset.month=base.getMonth();ov.dataset.inputId="";
+  const render=()=>{
+    const y=Number(ov.dataset.year),m=Number(ov.dataset.month);
+    ov.querySelector("#dateTitle").textContent=new Intl.DateTimeFormat("el-GR",{month:"long",year:"numeric"}).format(new Date(y,m,1)).toUpperCase();
+    const grid=ov.querySelector("#dateGrid");grid.innerHTML="";
+    const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();
+    for(let i=0;i<first;i++)grid.appendChild(document.createElement("span"));
+    for(let d=1;d<=days;d++){
+      const b=document.createElement("button");b.type="button";b.textContent=d;
+      const iso=y+"-"+String(m+1).padStart(2,"0")+"-"+String(d).padStart(2,"0");
+      if(input.value===iso)b.className="selected";
+      b.onclick=()=>{input.value=iso;ov.classList.remove("open");input.dispatchEvent(new Event("change",{bubbles:true}))};
+      grid.appendChild(b);
+    }
+  };
+  ov.querySelector("#datePrev").onclick=()=>{let m=Number(ov.dataset.month)-1,y=Number(ov.dataset.year);if(m<0){m=11;y--}ov.dataset.month=m;ov.dataset.year=y;render()};
+  ov.querySelector("#dateNext").onclick=()=>{let m=Number(ov.dataset.month)+1,y=Number(ov.dataset.year);if(m>11){m=0;y++}ov.dataset.month=m;ov.dataset.year=y;render()};
+  ov.querySelector("#dateToday").onclick=()=>{const d=new Date();input.value=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");ov.classList.remove("open");input.dispatchEvent(new Event("change",{bubbles:true}))};
+  ov.querySelector("#dateClose").onclick=()=>ov.classList.remove("open");
+  render();ov.classList.add("open");
 }
 function openClock24(input){
   let ov=document.getElementById("clock24Overlay");
@@ -49,6 +79,13 @@ function openClock24(input){
     face.appendChild(b);
   }
   ov.classList.add("open");
+}
+if(!document.getElementById("datePickerStyle")){
+  const st=document.createElement("style");st.id="datePickerStyle";st.textContent=`
+.date-picker-overlay{position:fixed;inset:0;background:rgba(0,0,0,.48);display:none;align-items:center;justify-content:center;z-index:100000;padding:18px}
+.date-picker-overlay.open{display:flex}.date-picker-card{width:min(94vw,430px);background:#fff;border-radius:24px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.3);text-align:center}
+.date-picker-head{display:grid;grid-template-columns:48px 1fr 48px;align-items:center;font-size:19px;margin-bottom:12px}.date-picker-head button{border:0;background:#eef4f0;border-radius:12px;font-size:30px;height:46px}.date-week,.date-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}.date-week{margin-bottom:6px;font-size:12px}.date-grid button{height:42px;border:0;border-radius:10px;background:#f4f6f4;font-size:16px;font-weight:700}.date-grid button.selected{background:#35574d;color:#fff}.date-today,.date-close{width:100%;border:0;border-radius:12px;padding:12px;margin-top:12px;font-weight:800;font-size:16px}.date-today{background:#eef4f0}.date-close{background:#dcebe2}
+`;document.head.appendChild(st);
 }
 if(!document.getElementById("clock24Style")){
   const st=document.createElement("style");st.id="clock24Style";st.textContent=`
