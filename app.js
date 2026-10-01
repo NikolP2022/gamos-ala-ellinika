@@ -370,7 +370,7 @@ function openSimpleFolder(kind,i,cats,key,existing,adding){
   }
   h+='<textarea id="simpleNotes" placeholder="Γράψε εδώ ό,τι χρειάζεσαι...">'+esc(x.notes||"")+'</textarea></div><button class="primary" id="saveSimple">💾 ΑΠΟΘΗΚΕΥΣΗ</button>';
   if(found&&!adding) h+='<button class="danger" id="delSimple">🗑️ ΔΙΑΓΡΑΦΗ</button>';
-  $("detailMount").innerHTML=h;show("detailView");
+  $("detailMount").innerHTML=h;show("detailView");activateDateTimePickers($("detailMount"));
   $("simpleFolderBack").onclick=()=>simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);
   $("saveSimple").onclick=()=>{
     const item={...x,name:$("simpleName").value,date:$("simpleDate")?$("simpleDate").value:"",notes:$("simpleNotes").value};
