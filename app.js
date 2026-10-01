@@ -13,7 +13,7 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
 function save(){localStorage.setItem(KEY,JSON.stringify(data));localStorage.removeItem("gamos_ala_ellinika_v2")}
 function show(id){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));const el=$(id);if(el)el.classList.remove("hidden");window.scrollTo(0,0)}
-function field(q,v=""){if(q.endsWith("□"))return '<div class="field check"><label><input type="checkbox" name="'+esc(q)+'" '+(v==="ΝΑΙ"?"checked":"")+'><span>'+esc(q.replace(" □",""))+'</span></label></div>';if(q==="ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ"||q==="ΣΗΜΕΙΩΣΕΙΣ")return '<div class="field full"><label>'+q+'</label><textarea name="'+q+'">'+esc(v)+'</textarea></div>';if(q==="Δεξίωση ΝΑΙ ΟΧΙ"||q==="Εξοφλήθηκε ΝΑΙ ΟΧΙ")return '<div class="field"><label>'+q+'</label><select name="'+q+'"><option></option><option '+(v==="ΝΑΙ"?"selected":"")+'>ΝΑΙ</option><option '+(v==="ΟΧΙ"?"selected":"")+'>ΟΧΙ</option></select></div>';if(/ημερομηνία/i.test(q))return '<div class="field"><label>'+q+'</label><input type="text" class="date-picker" readonly autocomplete="off" name="'+esc(q)+'" value="'+esc(v)+'" placeholder="📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ"></div>';let t=/ώρα/i.test(q)?"time":/email/i.test(q)?"email":/ποσό/i.test(q)?"number":"text";return '<div class="field"><label>'+q+'</label><input type="'+t+'" name="'+esc(q)+'" value="'+esc(v)+'"></div>'}
+function field(q,v=""){if(q.endsWith("□"))return '<div class="field check"><label><input type="checkbox" name="'+esc(q)+'" '+(v==="ΝΑΙ"?"checked":"")+'><span>'+esc(q.replace(" □",""))+'</span></label></div>';if(q==="ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ"||q==="ΣΗΜΕΙΩΣΕΙΣ")return '<div class="field full"><label>'+q+'</label><textarea name="'+q+'">'+esc(v)+'</textarea></div>';if(q==="Δεξίωση ΝΑΙ ΟΧΙ"||q==="Εξοφλήθηκε ΝΑΙ ΟΧΙ")return '<div class="field"><label>'+q+'</label><select name="'+q+'"><option></option><option '+(v==="ΝΑΙ"?"selected":"")+'>ΝΑΙ</option><option '+(v==="ΟΧΙ"?"selected":"")+'>ΟΧΙ</option></select></div>';if(/ημερομηνία/i.test(q))return '<div class="field"><label>'+q+'</label><input type="text" class="date-picker" readonly autocomplete="off" name="'+esc(q)+'" value="'+esc(v)+'" placeholder="📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ"></div>';if(/ώρα/i.test(q))return '<div class="field"><label>'+q+'</label><input type="text" class="time-picker" readonly autocomplete="off" inputmode="none" name="'+esc(q)+'" value="'+esc(v)+'" placeholder="🕐 ΕΠΙΛΕΞΕ ΩΡΑ"></div>';let t=/email/i.test(q)?"email":/ποσό/i.test(q)?"number":"text";return '<div class="field"><label>'+q+'</label><input type="'+t+'" name="'+esc(q)+'" value="'+esc(v)+'"></div>'
 function activateDateTimePickers(root){
   const scope=root||document;
   scope.querySelectorAll('input.date-picker').forEach(inp=>{
@@ -21,10 +21,10 @@ function activateDateTimePickers(root){
     inp.dataset.pickerBound="1";
     inp.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCalendarPicker(inp)});
   });
-  scope.querySelectorAll('input[type="time"]').forEach(inp=>{
+  scope.querySelectorAll('input.time-picker, input[type="time"]').forEach(inp=>{
     if(inp.dataset.pickerBound==="1")return;
     inp.dataset.pickerBound="1";
-    inp.readOnly=true; inp.inputMode="none";
+    inp.type="text"; inp.readOnly=true; inp.inputMode="none";
     inp.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openClock24(inp)});
   });
 }
