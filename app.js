@@ -575,30 +575,90 @@ const SYNC_URL="https://vbkuvexyqehmpeeejqbh.supabase.co/functions/v1/gamos-sync
 const SYNC_KEYS=["gamos_ala_ellinika_v3","gamos_daily_schedule_v2","gamos_collaborators_v1","gamos_happy_orders_v2","gamos_appointments_mysteries_v1","gamos_appointments_partners_v1","gamos_pending_v1","gamos_deliveries_v1","gamos_disks_v1"];
 let syncBusy=false,syncLastRemote=null;
 function syncAllLocalStorage(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k!=="gamos_sync_token")o[k]=localStorage.getItem(k)}return o}
-function syncApplyAll(data){syncBusy=true;Object.entries(data||{}).forEach(([k,v])=>{if(k!=="gamos_sync_token")localStorage.setItem(k,v)});syncBusy=false}
+function syncApplyAll(data){syncBusy=true;Object.entries(data||{}).forEach(([k,v])=>{if(k!=="gamos_sync_token"&&v!=null)localStorage.setItem(k,v)});syncBusy=false}
+function syncParse(v){try{return JSON.parse(v)}catch(e){return v}}
+function syncMergeValue(local,remote){
+  if(local==null)return remote;
+  if(remote==null)return local;
+  const a=syncParse(local),b=syncParse(remote);
+  if(Array.isArray(a)&&Array.isArray(b)){
+    const out=[...a];
+    const ids=new Map(out.map((x,i)=>[x&&x.id!=null?String(x.id):"__"+i,i]));
+    b.forEach((x,i)=>{
+      const id=x&&x.id!=null?String(x.id):"__remote_"+i;
+      if(ids.has(id))out[ids.get(id)]=x; else {ids.set(id,out.length);out.push(x)}
+    });
+    return JSON.stringify(out);
+  }
+  if(a&&typeof a==="object"&&b&&typeof b==="object"){
+    return JSON.stringify({...a,...b});
+  }
+  return local===remote?local:remote;
+}
+function syncMergeData(local,remote){
+  const out={...(local||{})};
+  Object.entries(remote||{}).forEach(([k,v])=>{out[k]=syncMergeValue(out[k],v)});
+  return out;
+}
 async function syncCall(body){const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw Error(j.error||"Σφάλμα συγχρονισμού");return j}
-async function syncPull(){if(syncBusy)return;try{const j=await syncCall({action:"pull"});if(j.updated_at&&j.updated_at!==syncLastRemote){syncLastRemote=j.updated_at;if(Object.keys(j.data||{}).length){syncApplyAll(j.data);location.reload()}}}catch(e){console.warn("Cloud sync:",e.message)}}
-async function syncPush(){if(syncBusy)return;try{const j=await syncCall({action:"push",data:syncAllLocalStorage()});syncLastRemote=j.updated_at}catch(e){console.warn("Cloud sync:",e.message)}}
+async function syncGetRemote(){return await syncCall({action:"pull"})}
+async function syncPull(){
+  if(syncBusy)return;
+  try{
+    const j=await syncGetRemote();
+    if(j.updated_at)syncLastRemote=j.updated_at;
+    const remote=j.data||{};
+    if(Object.keys(remote).length){
+      const merged=syncMergeData(syncAllLocalStorage(),remote);
+      syncApplyAll(merged);
+      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+      if(JSON.stringify(merged)!==JSON.stringify(remote))await syncPush();
+      else if(location.hash&&location.hash!=="#")renderDaily();
+    }
+  }catch(e){console.warn("Cloud sync:",e.message)}
+}
+async function syncPush(){
+  if(syncBusy)return;
+  syncBusy=true;
+  try{
+    const local=syncAllLocalStorage();
+    const j=await syncCall({action:"push",data:local});
+    syncLastRemote=j.updated_at||syncLastRemote;
+    window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+  }catch(e){console.warn("Cloud sync:",e.message)}
+  finally{syncBusy=false}
+}
 (function(){
-  const hasLocalData=()=>Object.keys(syncAllLocalStorage()).length>0;
   setTimeout(async()=>{
+    if(syncBusy)return;
+    syncBusy=true;
     try{
-      if(hasLocalData()){
-        // Υπάρχουν ήδη τοπικά δεδομένα: πρώτα τα ανεβάζουμε ώστε η ανανέωση να μην τα αντικαταστήσει.
-        window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-        await syncPush();
-      }else{
-        await syncPull();
-        window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-      }
+      const local=syncAllLocalStorage();
+      const j=await syncGetRemote();
+      syncLastRemote=j.updated_at||null;
+      const remote=j.data||{};
+      const merged=syncMergeData(local,remote);
+      syncApplyAll(merged);
+      if(Object.keys(merged).length)await syncCall({action:"push",data:merged});
+      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
     }catch(e){console.warn("Αρχικός συγχρονισμός:",e.message)}
-  },1200);
+    finally{syncBusy=false}
+  },400);
   setInterval(async()=>{
     if(syncBusy)return;
     const now=JSON.stringify(syncAllLocalStorage());
     if(now!==window.__lastSyncSnapshot){
-      window.__lastSyncSnapshot=now;
-      await syncPush();
+      syncBusy=true;
+      try{
+        const local=syncAllLocalStorage();
+        const j=await syncGetRemote();
+        const merged=syncMergeData(local,j.data||{});
+        syncApplyAll(merged);
+        await syncCall({action:"push",data:merged});
+        syncLastRemote=j.updated_at||syncLastRemote;
+        window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+      }catch(e){console.warn("Cloud sync:",e.message)}
+      finally{syncBusy=false}
     }else{
       await syncPull();
     }
