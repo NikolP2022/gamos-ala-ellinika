@@ -106,7 +106,7 @@ if(sameMystery)alert("⚠️ ΠΡΟΣΟΧΗ: Η ημερομηνία και ώρ
 if(item)data=data.map(a=>a.id===item.id?x:a);else data.push(x);save();month=new Date(x.date+"T00:00:00");calendar();renderDaily();show("calendarView")}}
 function eventTitle(x){const f=x.fields;if(x.type==="baptism")return "🕊️ "+(f["Όνομα παιδιού"]||"Βάπτιση");if(x.type==="weddingBaptism")return "💍🕊️ "+[f["Όνομα Γαμπρού"],f["Όνομα Νύφης"]].filter(Boolean).join(" & ")||"Γάμος & Βάπτιση";return (x.type==="civilWedding"?"🏛️ ":"💍 ")+[f["Όνομα Γαμπρού"],f["Όνομα Νύφης"]].filter(Boolean).join(" & ")||schemas[x.type][0]}
 function calendar(){const y=month.getFullYear(),m=month.getMonth();$("monthTitle").textContent=new Intl.DateTimeFormat("el-GR",{month:"long",year:"numeric"}).format(month).toUpperCase();const g=$("calendar");g.innerHTML="";const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();for(let i=0;i<first;i++)g.appendChild(document.createElement("div"));for(let d=1;d<=days;d++){const c=document.createElement("div");c.className="day";c.innerHTML="<b>"+d+"</b>";data.filter(x=>{const z=new Date(x.date+"T00:00:00");return z.getFullYear()===y&&z.getMonth()===m&&z.getDate()===d}).forEach(x=>{const b=document.createElement("button");b.className="event";b.type="button";b.textContent=eventTitle(x);b.onclick=()=>detail(x);c.appendChild(b)});g.appendChild(c)}}
-function detail(x){let h="<h2>"+schemas[x.type][0]+"</h2>";schemas[x.type][1].forEach(([s,fs])=>{h+='<div class="form-section"><h3>'+s+'</h3><div class="detail-grid">'+fs.map(q=>'<div class="detail"><b>'+q+'</b><br>'+esc(x.fields[q]||"—").replace(/\\n/g,"<br>")+'</div>').join("")+"</div></div>"});h+='<button class="primary" id="editBtn">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteBtn">🗑️ ΔΙΑΓΡΑΦΗ</button>';$("detailMount").innerHTML=h;show("detailView");$("editBtn").onclick=()=>form(x.type,x);$("deleteBtn").onclick=()=>{const ok=window.confirm("Να διαγραφεί οριστικά αυτό το μυστήριο;");if(!ok)return;const before=data.length;data=data.filter(a=>String(a.id)!==String(x.id));if(data.length===before){const legacy=JSON.parse(localStorage.getItem("gamos_ala_ellinika_v2")||"[]");data=Array.isArray(legacy)?legacy.filter(a=>String(a.id)!==String(x.id)):data}localStorage.setItem(KEY,JSON.stringify(data));localStorage.removeItem("gamos_ala_ellinika_v2");calendar();show("calendarView");setTimeout(()=>alert("Το μυστήριο διαγράφηκε."),50)}}
+function detail(x){let h="<h2>"+schemas[x.type][0]+"</h2>";schemas[x.type][1].forEach(([s,fs])=>{h+='<div class="form-section"><h3>'+s+'</h3><div class="detail-grid">'+fs.map(q=>'<div class="detail"><b>'+q+'</b><br>'+esc(x.fields[q]||"—").replace(/\\n/g,"<br>")+'</div>').join("")+"</div></div>"});h+='<button class="primary" id="editBtn">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteBtn">🗑️ ΔΙΑΓΡΑΦΗ</button>';$("detailMount").innerHTML=h;show("detailView");$("editBtn").onclick=()=>form(x.type,x);$("deleteBtn").onclick=()=>{const ok=window.confirm("Να διαγραφεί οριστικά αυτό το μυστήριο;");if(!ok)return;const before=data.length;data=data.filter(a=>String(a.id)!==String(x.id));if(data.length===before){const legacy=JSON.parse(localStorage.getItem("gamos_ala_ellinika_v2")||"[]");data=Array.isArray(legacy)?legacy.filter(a=>String(a.id)!==String(x.id)):data}localStorage.setItem(KEY,JSON.stringify(data));localStorage.removeItem("gamos_ala_ellinika_v2");calendar();renderDaily();show("calendarView");setTimeout(()=>alert("Το μυστήριο διαγράφηκε."),50)}}
 function dailyAddSection(rows,title,items,getLabel){
   if(!items.length)return;
   const box=document.createElement("div");box.className="daily-events";
@@ -118,25 +118,34 @@ function dailyAddSection(rows,title,items,getLabel){
   });
   rows.appendChild(box);
 }
-function dailyTime(x){
-  if(!x)return "";
-  if(x.time)return String(x.time);
-  if(x.fields){
-    for(const k of Object.keys(x.fields)){
-      if(/ώρα/i.test(k)&&/^\d{2}:\d{2}$/.test(String(x.fields[k]||"")))return String(x.fields[k]);
+function isIsoDate(v){return /^\d{4}-\d{2}-\d{2}$/.test(String(v||""))}
+function isTime(v){return /^\d{2}:\d{2}$/.test(String(v||""))}
+function findDateTimeDeep(obj){
+  let date="",time="";
+  const seen=new Set();
+  function walk(v){
+    if(v==null||date&&time)return;
+    if(typeof v==="object"){
+      if(seen.has(v))return;seen.add(v);
+      if(Array.isArray(v)){v.forEach(walk);return}
+      for(const [k,val] of Object.entries(v)){
+        if(!date && /ημερομηνία|date/i.test(k) && isIsoDate(val))date=String(val);
+        if(!time && /ώρα|time/i.test(k) && isTime(val))time=String(val);
+        if(!date||!time)walk(val);
+      }
     }
   }
-  return "";
+  walk(obj);return {date,time};
+}
+function dailyTime(x){
+  if(!x)return "";
+  if(isTime(x.time))return String(x.time);
+  return findDateTimeDeep(x).time||"";
 }
 function dailyDate(x){
   if(!x)return "";
-  if(x.date)return String(x.date);
-  if(x.fields){
-    for(const k of Object.keys(x.fields)){
-      if(/ημερομηνία/i.test(k)&&/^\d{4}-\d{2}-\d{2}$/.test(String(x.fields[k]||"")))return String(x.fields[k]);
-    }
-  }
-  return "";
+  if(isIsoDate(x.date))return String(x.date);
+  return findDateTimeDeep(x).date||"";
 }
 function renderDaily(){
   const date=$("scheduleDate").value,rows=$("scheduleRows");rows.innerHTML="";
@@ -153,8 +162,11 @@ function renderDaily(){
     if(!k||handledKeys.has(k))continue;
     try{
       const raw=JSON.parse(localStorage.getItem(k)||"null");
-      if(!Array.isArray(raw))continue;
-      raw.forEach(x=>{const d=dailyDate(x),t=dailyTime(x);if(d===date&&t)pushEvent(t,"📌 "+(x.name||x.title||x.category||k)+" — "+t,null);});
+      const list=Array.isArray(raw)?raw:(raw&&typeof raw==="object"?Object.values(raw):[]);
+      list.forEach(x=>{
+        const d=dailyDate(x),t=dailyTime(x);
+        if(d===date&&t)pushEvent(t,"📌 "+(x.name||x.title||x.category||x.type||k)+" — "+t,null);
+      });
     }catch(e){}
   }
   events.sort((a,b)=>(timeToMinutes(a.time)??1440)-(timeToMinutes(b.time)??1440));
@@ -346,7 +358,7 @@ function openAppointment(kind,i){
   $("detailMount").innerHTML=h;show("detailView");
   $("openApptBack").onclick=()=>appointmentFolder(kind);
   $("editAppointment").onclick=()=>appointmentFields(kind,x);
-  $("deleteAppointment").onclick=()=>{if(confirm("Να διαγραφεί οριστικά αυτό το ραντεβού;")){arr.splice(i,1);saveAppts(key,arr);appointmentFolder(kind)}};
+  $("deleteAppointment").onclick=()=>{if(confirm("Να διαγραφεί οριστικά αυτό το ραντεβού;")){arr.splice(i,1);saveAppts(key,arr);appointmentFolder(kind);renderDaily()}};
 }
 function appointments(){
   let h='<button class="back" id="appointmentsBack">← ΜΕΝΟΥ</button><h2>📅 ΡΑΝΤΕΒΟΥ</h2>';
@@ -438,7 +450,7 @@ function openSimpleFolder(kind,i,cats,key,existing,adding){
     if(!adding){const idx=arr.findIndex(z=>z.id===x.id);if(idx>=0)arr[idx]=item;else arr.push(item)}else arr.push(item);
     saveArr(key,arr);simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);renderDaily();
   };
-  if($("delSimple")) $("delSimple").onclick=()=>{saveArr(key,arr.filter(z=>z.id!==x.id));simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind)};
+  if($("delSimple")) $("delSimple").onclick=()=>{saveArr(key,arr.filter(z=>z.id!==x.id));simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);renderDaily()};
 }
 function pending(){simpleFolders("📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",TASK_CATS,TASKS_KEY,"task")}
 function deliveries(){simpleFolders("📦 ΠΑΡΑΔΟΣΕΙΣ",DELIVERY_CATS,DELIVERIES_KEY,"delivery")}
