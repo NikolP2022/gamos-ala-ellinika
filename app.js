@@ -651,7 +651,7 @@ function syncThreeWayData(base,local,remote){
   return out;
 }
 async function syncCall(body){
-  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":SYNC_API_KEY,"Authorization":"Bearer "+SYNC_API_KEY},body:JSON.stringify(body),cache:"no-store"});
+  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
   const j=await r.json();
   if(!r.ok){const e=new Error(j.error||"Σφάλμα συγχρονισμού");e.syncResponse=j;throw e}
   return j;
@@ -701,17 +701,42 @@ async function syncReconcile(){
     if(syncBusy)return;
     syncBusy=true;
     try{
-      const local=syncAllLocalStorage(),remote=await syncCall({action:"pull"});
-      const base={};
-      const merged=syncThreeWayData(base,local,remote.data||{});
-      const j=await syncCall({action:"push",data:merged,base_revision:Number(remote.revision||0),device_id:SYNC_DEVICE_ID});
-      syncApplyAll(j.data||merged);syncRevision=Number(j.revision||0);localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+      const initialized=localStorage.getItem("gamos_sync_initialized_v1")==="1";
+      const remote=await syncCall({action:"pull"});
+      syncRevision=Number(remote.revision||0);
+      localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+      const remoteData=remote.data||{};
+
+      if(!initialized){
+        // First opening on this device: NEVER overwrite the central workspace.
+        // If data already exists centrally, download it. Otherwise keep the device's
+        // current state and publish it as the first workspace.
+        if(Object.keys(remoteData).length){
+          syncApplyAll(remoteData);
+        }else{
+          const local=syncAllLocalStorage();
+          const pushed=await syncCall({action:"push",data:local,base_revision:syncRevision,device_id:SYNC_DEVICE_ID});
+          syncRevision=Number(pushed.revision||syncRevision);
+          localStorage.setItem(SYNC_REV_KEY,String(syncRevision));
+          syncApplyAll(pushed.data||local);
+        }
+        localStorage.setItem("gamos_sync_initialized_v1","1");
+      }else{
+        const base=window.__lastSyncSnapshot?JSON.parse(window.__lastSyncSnapshot):syncAllLocalStorage();
+        const local=syncAllLocalStorage();
+        const merged=syncThreeWayData(base,local,remoteData);
+        if(JSON.stringify(merged)!==JSON.stringify(local)){
+          syncApplyAll(merged);
+        }
+      }
+
       window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
       if(typeof renderDaily==="function")renderDaily();
     }catch(e){console.warn("Αρχικός συγχρονισμός:",e.message)}
     finally{syncBusy=false}
-  },300);
-  syncTimer=setInterval(syncReconcile,1500);
+  },500);
+
+  syncTimer=setInterval(syncReconcile,2000);
   window.addEventListener("focus",()=>syncReconcile());
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncReconcile()});
 })();
