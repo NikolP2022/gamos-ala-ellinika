@@ -366,8 +366,8 @@ const APPT_PARTNER_KEY="gamos_appointments_partners_v1";
 function getAppts(key){const x=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(x)?x:[]}
 function saveAppts(key,x){localStorage.setItem(key,JSON.stringify(x))}
 function appointmentFields(kind,item){
-  const dateField=(label,value)=>`<div class="field"><label>${label}</label><input type="text" class="date-picker" readonly autocomplete="off" inputmode="none" placeholder="📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ" value="${esc(value||"")}"></div>`;
-  const timeField=(label,value)=>`<div class="field"><label>${label}</label><input type="text" class="time-picker" readonly autocomplete="off" inputmode="none" placeholder="🕐 ΕΠΙΛΕΞΕ ΩΡΑ" value="${esc(value||"")}"></div>`;
+  const dateField=(label,value)=>`<div class="field"><label>${label}</label><input type="text" name="${label}" class="date-picker" readonly autocomplete="off" inputmode="none" placeholder="📅 ΠΑΤΗΣΕ ΓΙΑ ΗΜΕΡΟΛΟΓΙΟ" value="${esc(value||"")}" style="cursor:pointer"></div>`;
+  const timeField=(label,value)=>`<div class="field"><label>${label}</label><input type="text" name="${label}" class="time-picker" readonly autocomplete="off" inputmode="none" placeholder="🕐 ΠΑΤΗΣΕ ΓΙΑ 24ΩΡΟ ΡΟΛΟΪ" value="${esc(value||"")}" style="cursor:pointer"></div>`;
   const mystery=kind==="mystery";
   const f=item||{};
   let h='<button class="back" id="apptListBack">← ΡΑΝΤΕΒΟΥ</button><h2>'+ (mystery?"📁 Ραντεβού μυστήριου":"📁 Ραντεβού για συνεργασία") +'</h2><form id="apptForm">';
