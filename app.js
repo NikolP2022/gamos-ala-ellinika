@@ -645,9 +645,11 @@ async function syncPush(){
       const merged=syncMergeData(local,j.data||{});
       syncApplyAll(merged);
       window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-      await syncPush();
     }catch(e){console.warn("Αρχικός συγχρονισμός:",e.message)}
-    finally{syncBusy=false}
+    finally{
+      syncBusy=false;
+      await syncPush();
+    }
   },400);
   setInterval(async()=>{
     if(syncBusy)return;
