@@ -19,13 +19,24 @@ function activateDateTimePickers(root){
   scope.querySelectorAll('input.date-picker').forEach(inp=>{
     if(inp.dataset.pickerBound==="1")return;
     inp.dataset.pickerBound="1";
-    inp.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCalendarPicker(inp)});
+    inp.readOnly=true;
+    inp.setAttribute("autocomplete","off");
+    const open=e=>{if(e){e.preventDefault();e.stopPropagation()}openCalendarPicker(inp)};
+    inp.addEventListener("pointerdown",open);
+    inp.addEventListener("click",open);
+    inp.addEventListener("focus",()=>openCalendarPicker(inp));
   });
   scope.querySelectorAll('input.time-picker, input[type="time"]').forEach(inp=>{
     if(inp.dataset.pickerBound==="1")return;
     inp.dataset.pickerBound="1";
-    inp.type="text"; inp.readOnly=true; inp.inputMode="none";
-    inp.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openClock24(inp)});
+    inp.type="text";
+    inp.readOnly=true;
+    inp.inputMode="none";
+    inp.setAttribute("autocomplete","off");
+    const open=e=>{if(e){e.preventDefault();e.stopPropagation()}openClock24(inp)};
+    inp.addEventListener("pointerdown",open);
+    inp.addEventListener("click",open);
+    inp.addEventListener("focus",()=>openClock24(inp));
   });
 }
 function openCalendarPicker(input){
