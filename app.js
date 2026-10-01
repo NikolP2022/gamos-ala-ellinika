@@ -56,14 +56,25 @@ function renderDaily(){
   dailyAddSection(rows,"📦 ΠΑΡΑΔΟΣΕΙΣ ΤΗΣ ΗΜΕΡΑΣ",datedDeliveries,x=>
     "📦 "+(x.name||x.category||"Παράδοση"));
 
-  for(let h=8;h<=22;h++){
-    const t=String(h).padStart(2,"0")+":00",r=document.createElement("div");r.className="schedule-row";
-    r.innerHTML='<span>'+t+'</span><input type="text" placeholder="Τι έχεις προγραμματίσει;">';
-    const i=r.querySelector("input");i.value=(daily[date]||{})[t]||"";
-    i.oninput=()=>{daily[date]=daily[date]||{};daily[date][t]=i.value;localStorage.setItem(DAYKEY,JSON.stringify(daily));syncPush()};
+  for(let h=0;h<=23;h++){
+    const t=String(h).padStart(2,"0")+":00";
+    const r=document.createElement("div");r.className="schedule-row";
+    r.innerHTML='<span>'+t+'</span><input type="text" autocomplete="off" placeholder="Γράψε εδώ για τις '+t+'...">';
+    const i=r.querySelector("input");
+    i.value=(daily[date]||{})[t]||"";
+    const persist=async()=>{
+      daily[date]=daily[date]||{};
+      daily[date][t]=i.value;
+      localStorage.setItem(DAYKEY,JSON.stringify(daily));
+      window.__lastSyncSnapshot="";
+      if(typeof syncPush==="function") await syncPush();
+    };
+    i.addEventListener("input",persist);
+    i.addEventListener("change",persist);
+    i.addEventListener("blur",persist);
     rows.appendChild(r);
   }
-}
+}}
 function init(){ $("newBtn").onclick=()=>show("typeView"); $("calendarBtn").onclick=()=>{calendar();show("calendarView")}; $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden"); $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden"); $("mysteriesBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");show("typeView")}; document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type)); $("collaboratorsBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");collaborators()}; $("happyBoxBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");happyBox()}; document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back)); $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()}; $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()}; const now=new Date();$("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);$("scheduleDate").onchange=renderDaily;renderDaily();calendar()}
 window.show=show;window.form=form;window.calendar=calendar;window.detail=detail;
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{init();ensureHappyMenu()});else{init();ensureHappyMenu()}
