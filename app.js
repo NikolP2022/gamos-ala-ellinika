@@ -394,8 +394,8 @@ function appointmentFields(kind,item){
   activateDateTimePickers($("detailMount"));
   $("apptListBack").onclick=()=>appointmentFolder(kind);
   $("apptForm").onsubmit=e=>{
-    e.preventDefault();const fd=new FormData(e.target),read=name=>e.target.querySelector(`[name="${name}"]`)?.value||fd.get(name)||"",x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:read("ΟΝΟΜΑ"),phone:read("ΤΗΛΕΦΩΝΟ"),date:read("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ"),time:read("ΩΡΑ ΡΑΝΤΕΒΟΥ")};
-    if(!x.date||!x.time){alert("Συμπλήρωσε ημερομηνία και ώρα ραντεβού.");return}
+    e.preventDefault();const fd=new FormData(e.target);const read=name=>{const el=e.target.querySelector(`[name="${name}"]`);return String(el?el.value:(fd.get(name)||"")).trim()};const x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:read("ΟΝΟΜΑ"),phone:read("ΤΗΛΕΦΩΝΟ"),date:read("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ"),time:read("ΩΡΑ ΡΑΝΤΕΒΟΥ")};
+    if(!x.date||!x.time){alert("⚠️ ΕΠΕΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ ΩΡΑ ΡΑΝΤΕΒΟΥ.");return}
     const conflict=appointmentConflict(x,kind);
     if(conflict){
       alert("⚠️ ΥΠΑΡΧΕΙ ΗΔΗ ΔΕΣΜΕΥΜΕΝΟ ΡΑΝΤΕΒΟΥ\n\n"+formatAppt(conflict)+"\n\nΤο ραντεβού διαρκεί 1 ώρα. Δεν έγινε αποθήκευση για να αποφευχθεί διπλοκράτηση.");
