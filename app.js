@@ -285,6 +285,30 @@ function pending(){simpleFolders("📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",TASK_CATS,TASKS
 function deliveries(){simpleFolders("📦 ΠΑΡΑΔΟΣΕΙΣ",DELIVERY_CATS,DELIVERIES_KEY,"delivery")}
 function disks(){simpleFolders("💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",DISK_CATS,DISKS_KEY,"disk")}
 window.pending=pending;window.deliveries=deliveries;window.disks=disks;
+// ===== ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ =====
+const SYNC_URL="https://vbkuvexyqehmpeeejqbh.supabase.co/functions/v1/gamos-sync";
+const SYNC_KEYS=["gamos_ala_ellinika_v3","gamos_daily_schedule_v2","gamos_collaborators_v1","gamos_happy_orders_v2","gamos_appointments_mysteries_v1","gamos_appointments_partners_v1","gamos_pending_v1","gamos_deliveries_v1","gamos_disks_v1"];
+let syncBusy=false,syncLastRemote="";
+function syncSnapshot(){const o={};SYNC_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)o[k]=v});return o}
+function syncApply(data){syncBusy=true;Object.entries(data||{}).forEach(([k,v])=>localStorage.setItem(k,v));syncBusy=false}
+async function syncCall(body){const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.error||"Σφάλμα συγχρονισμού");return j}
+function syncStatus(t){const e=$("syncStatus");if(e)e.textContent=t}
+async function syncPush(){const code=localStorage.getItem("gamos_sync_code");if(!code||syncBusy)return;try{await syncCall({action:"push",code,data:syncSnapshot()});syncStatus("☁️ Συγχρονισμένο")}catch(e){syncStatus("⚠️ Δεν έγινε συγχρονισμός")}}
+async function syncPull(force=false){const code=localStorage.getItem("gamos_sync_code");if(!code||syncBusy)return;try{const j=await syncCall({action:"pull",code});if(force||j.updated_at!==syncLastRemote){syncLastRemote=j.updated_at;syncApply(j.data);syncStatus("☁️ Συγχρονισμένο")}}catch(e){syncStatus("⚠️ Δεν βρέθηκε σύνδεση")}}
+function syncScreen(){
+ let code=localStorage.getItem("gamos_sync_code")||"";
+ let h="<button class=\"back\" id=\"syncBack\">← ΜΕΝΟΥ</button><h2>☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ</h2>";
+ h+="<p style=\"font-size:18px;line-height:1.5\">Τα ίδια δεδομένα σε όλες τις συσκευές σου.<br>Χωρίς email και χωρίς λογαριασμό.</p>";
+ h+="<div class=\"collab-editor\"><label class=\"collab-label\">ΚΩΔΙΚΟΣ ΣΥΓΧΡΟΝΙΣΜΟΥ</label><input id=\"syncCode\" class=\"collab-name\" maxlength=\"10\" value=\""+esc(code)+"\" placeholder=\"π.χ. ABCD1234XY\" style=\"text-transform:uppercase;text-align:center;font-size:24px;letter-spacing:3px\"><div id=\"syncStatus\" style=\"font-weight:700;margin:14px 0\"></div></div>";
+ h+="<button class=\"primary big\" id=\"syncCreate\">＋ ΔΗΜΙΟΥΡΓΙΑ ΝΕΟΥ ΚΩΔΙΚΟΥ</button><button class=\"secondary big\" id=\"syncJoin\">🔗 ΣΥΝΔΕΣΗ ΜΕ ΚΩΔΙΚΟ</button>";
+ if(code)h+="<button class=\"secondary big\" id=\"syncNow\">☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΤΩΡΑ</button>";
+ $("detailMount").innerHTML=h;show("detailView");$("syncBack").onclick=()=>show("homeView");
+ $("syncCreate").onclick=async()=>{try{syncStatus("⏳ Δημιουργία...");const j=await syncCall({action:"create",data:syncSnapshot()});localStorage.setItem("gamos_sync_code",j.code);$("syncCode").value=j.code;syncStatus("✅ Ο κωδικός δημιουργήθηκε. Βάλ τον στις άλλες συσκευές.");}catch(e){syncStatus("⚠️ "+e.message)}};
+ $("syncJoin").onclick=async()=>{const v=$("syncCode").value.trim().toUpperCase();if(!v)return syncStatus("⚠️ Γράψε τον κωδικό");try{syncStatus("⏳ Σύνδεση...");const j=await syncCall({action:"pull",code:v});localStorage.setItem("gamos_sync_code",v);syncApply(j.data);syncLastRemote=j.updated_at;syncStatus("✅ Η συσκευή συνδέθηκε και ενημερώθηκε.");setTimeout(()=>location.reload(),500)}catch(e){syncStatus("⚠️ "+e.message)}};
+ if($("syncNow"))$("syncNow").onclick=async()=>{await syncPush();await syncPull(true)};
+}
+window.syncScreen=syncScreen;
+if(!window.__syncInterval){window.__syncInterval=setInterval(async()=>{if(localStorage.getItem("gamos_sync_code")){await syncPull();const local=JSON.stringify(syncSnapshot());if(!syncBusy&&local!==window.__lastSyncSnapshot){window.__lastSyncSnapshot=local;await syncPush()}}},5000);}
 function ensureExtraMenus(){
  const menu=$("sideMenu");if(!menu)return;
  [["disksBtn","💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",disks],["pendingBtn","📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",pending],["deliveriesBtn","📦 ΠΑΡΑΔΟΣΕΙΣ",deliveries]].forEach(([id,label,fn])=>{
