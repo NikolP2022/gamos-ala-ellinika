@@ -651,7 +651,7 @@ function syncThreeWayData(base,local,remote){
   return out;
 }
 async function syncCall(body){
-  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
+  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":SYNC_API_KEY,"Authorization":"Bearer "+SYNC_API_KEY},body:JSON.stringify(body),cache:"no-store"});
   const j=await r.json();
   if(!r.ok){const e=new Error(j.error||"Σφάλμα συγχρονισμού");e.syncResponse=j;throw e}
   return j;
