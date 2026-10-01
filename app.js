@@ -183,9 +183,29 @@ function renderDaily(){
     input.addEventListener("input",persist);input.addEventListener("change",persist);input.addEventListener("blur",persist);rows.appendChild(r);
   }
 }
-function init(){ $("newBtn").onclick=()=>show("typeView"); $("calendarBtn").onclick=()=>{calendar();show("calendarView")}; $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden"); $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden"); $("mysteriesBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");show("typeView")}; document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type)); $("collaboratorsBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");collaborators()}; $("happyBoxBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");happyBox()}; document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back)); $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()}; $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()}; const now=new Date();$("scheduleDate").classList.add("date-picker");$("scheduleDate").readOnly=true;$("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);activateDateTimePickers(document);$("scheduleDate").onchange=renderDaily;renderDaily();calendar()}
+function init(){
+  $("newBtn").onclick=()=>show("typeView");
+  $("calendarBtn").onclick=()=>{calendar();show("calendarView")};
+  $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden");
+  $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden");
+  $("mysteriesBtn").onclick=()=>{$("sideMenu").classList.add("hidden");show("typeView")};
+  document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type));
+  $("collaboratorsBtn").onclick=()=>{$("sideMenu").classList.add("hidden");collaborators()};
+  $("happyBoxBtn").onclick=()=>{$("sideMenu").classList.add("hidden");happyBox()};
+  $("appointmentsBtn").onclick=()=>{$("sideMenu").classList.add("hidden");appointments()};
+  document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back));
+  $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()};
+  $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()};
+  const now=new Date();
+  $("scheduleDate").classList.add("date-picker");
+  $("scheduleDate").readOnly=true;
+  $("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);
+  activateDateTimePickers(document);
+  $("scheduleDate").onchange=renderDaily;
+  renderDaily();
+  calendar();
+}
 window.show=show;window.form=form;window.calendar=calendar;window.detail=detail;
-if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{init();ensureHappyMenu()});else{init();ensureHappyMenu()}
 
 /* ΣΥΝΕΡΓΑΤΕΣ — κενή σελίδα με ελεύθερους φακέλους */
 const COLLAB_KEY="gamos_collaborators_v1";
@@ -482,3 +502,17 @@ function ensureExtraMenus(){
  });
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",ensureExtraMenus);else ensureExtraMenus();
+
+
+// ===== ΕΚΚΙΝΗΣΗ ΕΦΑΡΜΟΓΗΣ =====
+// Η εκκίνηση γίνεται στο τέλος του αρχείου, αφού έχουν δηλωθεί ΟΛΟΙ οι φάκελοι
+// και οι σταθερές ραντεβού. Έτσι κανένας φάκελος δεν μένει ανενεργός από
+// ReferenceError πριν ολοκληρωθεί η φόρτωση του app.js.
+function startApp(){
+  init();
+  ensureHappyMenu();
+  ensureAppointmentsMenu();
+  ensureExtraMenus();
+}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",startApp);
+else startApp();
