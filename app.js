@@ -394,7 +394,7 @@ function appointmentFields(kind,item){
   activateDateTimePickers($("detailMount"));
   $("apptListBack").onclick=()=>appointmentFolder(kind);
   $("apptForm").onsubmit=e=>{
-    e.preventDefault();const fd=new FormData(e.target),x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:fd.get("ΟΝΟΜΑ")||"",phone:fd.get("ΤΗΛΕΦΩΝΟ")||"",date:fd.get("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ")||"",time:fd.get("ΩΡΑ ΡΑΝΤΕΒΟΥ")||""};
+    e.preventDefault();const fd=new FormData(e.target),read=name=>e.target.querySelector(`[name="${name}"]`)?.value||fd.get(name)||"",x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:read("ΟΝΟΜΑ"),phone:read("ΤΗΛΕΦΩΝΟ"),date:read("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ"),time:read("ΩΡΑ ΡΑΝΤΕΒΟΥ")};
     if(!x.date||!x.time){alert("Συμπλήρωσε ημερομηνία και ώρα ραντεβού.");return}
     const conflict=appointmentConflict(x,kind);
     if(conflict){
@@ -402,15 +402,15 @@ function appointmentFields(kind,item){
       return;
     }
     if(mystery){
-      x.mystery=fd.get("ΜΥΣΤΗΡΙΟ")||"";
-      x.mysteryDate=fd.get("ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ")||"";
+      x.mystery=read("ΜΥΣΤΗΡΙΟ");
+      x.mysteryDate=read("ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ");
       saveAppts(APPT_MYSTERY_KEY,upsert(getAppts(APPT_MYSTERY_KEY),x));
     } else {
       x.video=fd.get("ΒΙΝΤΕΟ □")==="ΝΑΙ";x.photo=fd.get("ΦΩΤΟΓΡΑΦΙΑ □")==="ΝΑΙ";
       saveAppts(APPT_PARTNER_KEY,upsert(getAppts(APPT_PARTNER_KEY),x));
     }
     appointmentFolder(kind);
-    renderDaily();
+    renderDaily();window.__lastSyncSnapshot="";if(typeof syncPush==="function")syncPush();
   };
 }
 function mysteryConflict(x){
