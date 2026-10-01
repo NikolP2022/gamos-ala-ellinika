@@ -383,6 +383,12 @@ function appointmentFields(kind,item){
     renderDaily();
   };
 }
+function mysteryConflict(x){
+  if(!x.date||!x.fields)return null;
+  const time=String(x.fields["Ώρα Μυστήριου"]||"");
+  if(!isTime(time))return null;
+  return data.find(y=>String(y.id)!==String(x.id)&&y.date===x.date&&y.fields&&String(y.fields["Ώρα Μυστήριου"]||"")===time)||null;
+}
 function timeToMinutes(t){if(!/^\d{2}:\d{2}$/.test(String(t||"")))return null;const [h,m]=String(t).split(":").map(Number);return h*60+m}
 function formatAppt(x){return "📅 "+(x.date||"—")+"  🕐 "+(x.time||"—")+"\n📁 "+(x.name||"Ραντεβού")}
 function appointmentConflict(x,kind){
