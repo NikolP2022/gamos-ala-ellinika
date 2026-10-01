@@ -285,33 +285,35 @@ function pending(){simpleFolders("📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",TASK_CATS,TASKS
 function deliveries(){simpleFolders("📦 ΠΑΡΑΔΟΣΕΙΣ",DELIVERY_CATS,DELIVERIES_KEY,"delivery")}
 function disks(){simpleFolders("💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",DISK_CATS,DISKS_KEY,"disk")}
 window.pending=pending;window.deliveries=deliveries;window.disks=disks;
-// ===== ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ ΜΕ ΠΡΟΣΩΠΙΚΟ ΣΥΝΔΕΣΜΟ =====
+// ===== ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ — ΑΥΤΟΜΑΤΟΣ ΜΕ ΠΡΟΣΩΠΙΚΟ LINK =====
 const SYNC_URL="https://vbkuvexyqehmpeeejqbh.supabase.co/functions/v1/gamos-sync";
 const SYNC_KEYS=["gamos_ala_ellinika_v3","gamos_daily_schedule_v2","gamos_collaborators_v1","gamos_happy_orders_v2","gamos_appointments_mysteries_v1","gamos_appointments_partners_v1","gamos_pending_v1","gamos_deliveries_v1","gamos_disks_v1"];
 let syncBusy=false,syncLastRemote="";
 function syncSnapshot(){const o={};SYNC_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)o[k]=v});return o}
 function syncApply(data){syncBusy=true;Object.entries(data||{}).forEach(([k,v])=>localStorage.setItem(k,v));syncBusy=false}
-async function syncCall(body){const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw new Error(j.error||"Σφάλμα συγχρονισμού");return j}
+async function syncCall(body){const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});let j={};try{j=await r.json()}catch{}if(!r.ok)throw new Error(j.error||"Ο συγχρονισμός δεν είναι διαθέσιμος");return j}
 function syncStatus(t){const e=$("syncStatus");if(e)e.textContent=t}
 function syncToken(){return localStorage.getItem("gamos_sync_token")}
-async function syncPush(){const token=syncToken();if(!token||syncBusy)return;try{await syncCall({action:"push",token,data:syncSnapshot()});syncStatus("☁️ Συγχρονισμένο")}catch(e){syncStatus("⚠️ Δεν έγινε συγχρονισμός")}}
-async function syncPull(force=false){const token=syncToken();if(!token||syncBusy)return;try{const j=await syncCall({action:"pull",token});if(force||j.updated_at!==syncLastRemote){syncLastRemote=j.updated_at;syncApply(j.data);syncStatus("☁️ Συγχρονισμένο")}}catch(e){syncStatus("⚠️ Δεν βρέθηκε σύνδεση")}}
+function syncLink(){const t=syncToken();return t?location.origin+location.pathname+"?sync="+encodeURIComponent(t):""}
+async function syncPush(){const token=syncToken();if(!token||syncBusy)return false;try{await syncCall({action:"push",token,data:syncSnapshot()});syncStatus("☁️ ΣΥΓΧΡΟΝΙΣΜΕΝΟ");return true}catch(e){syncStatus("⚠️ "+e.message);return false}}
+async function syncPull(force=false){const token=syncToken();if(!token||syncBusy)return false;try{const j=await syncCall({action:"pull",token});if(force||j.updated_at!==syncLastRemote){syncLastRemote=j.updated_at;syncApply(j.data);syncStatus("☁️ ΣΥΓΧΡΟΝΙΣΜΕΝΟ")}return true}catch(e){syncStatus("⚠️ "+e.message);return false}}
 function syncScreen(){
  const token=syncToken();
  let h="<button class=\"back\" id=\"syncBack\">← ΜΕΝΟΥ</button><h2>☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ</h2>";
- h+="<p style=\"font-size:18px;line-height:1.5\">Τα ίδια δεδομένα σε όλες τις συσκευές σου.<br><b>Χωρίς email και χωρίς κωδικούς.</b></p>";
- h+="<div id=\"syncStatus\" style=\"font-weight:700;margin:14px 0\"></div>";
- h+="<button class=\"primary big\" id=\"syncCreate\">🔗 ΔΗΜΙΟΥΡΓΙΑ ΠΡΟΣΩΠΙΚΟΥ ΣΥΝΔΕΣΜΟΥ</button>";
- if(token)h+="<button class=\"secondary big\" id=\"syncCopy\">📋 ΑΝΤΙΓΡΑΦΗ ΣΥΝΔΕΣΜΟΥ</button><button class=\"secondary big\" id=\"syncNow\">☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΤΩΡΑ</button>";
- h+="<p style=\"font-size:16px;margin-top:16px\">Άνοιξε τον ίδιο προσωπικό σύνδεσμο στις υπόλοιπες συσκευές σου.</p>";
+ h+="<p style=\"font-size:18px;line-height:1.5\"><b>Χωρίς email. Χωρίς κωδικό.</b><br>Οι συσκευές σου χρησιμοποιούν τον ίδιο προσωπικό σύνδεσμο.</p>";
+ h+="<div id=\"syncStatus\" style=\"font-weight:700;margin:14px 0\">"+(token?"☁️ Έτοιμο για συγχρονισμό":"")+"</div>";
+ if(!token) h+="<button class=\"primary big\" id=\"syncCreate\">🔗 ΔΗΜΙΟΥΡΓΙΑ ΠΡΟΣΩΠΙΚΟΥ LINK</button>";
+ else h+="<button class=\"secondary big\" id=\"syncCopy\">📋 ΑΝΤΙΓΡΑΦΗ ΠΡΟΣΩΠΙΚΟΥ LINK</button><button class=\"secondary big\" id=\"syncNow\">☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΤΩΡΑ</button><button class=\"secondary big\" id=\"syncNew\">🔄 ΝΕΟ LINK</button>";
+ h+="<p style=\"font-size:16px;margin-top:16px\">Στην άλλη συσκευή ανοίγεις τον ίδιο προσωπικό σύνδεσμο. Δεν πληκτρολογείς τίποτα.</p>";
  $("detailMount").innerHTML=h;show("detailView");$("syncBack").onclick=()=>show("homeView");
- $("syncCreate").onclick=async()=>{try{syncStatus("⏳ Δημιουργία προσωπικού συνδέσμου...");const j=await syncCall({action:"create",data:syncSnapshot()});localStorage.setItem("gamos_sync_token",j.token);const link=location.origin+location.pathname+"?sync="+encodeURIComponent(j.token);await navigator.clipboard?.writeText(link);syncStatus("✅ Ο σύνδεσμος δημιουργήθηκε και αντιγράφηκε.");setTimeout(syncScreen,700)}catch(e){syncStatus("⚠️ "+e.message)}};
- if($("syncCopy"))$("syncCopy").onclick=async()=>{const link=location.origin+location.pathname+"?sync="+encodeURIComponent(token);await navigator.clipboard?.writeText(link);syncStatus("✅ Ο σύνδεσμος αντιγράφηκε.")};
- if($("syncNow"))$("syncNow").onclick=async()=>{await syncPush();await syncPull(true)};
+ if($("syncCreate"))$("syncCreate").onclick=async()=>{try{syncStatus("⏳ Δημιουργία...");const j=await syncCall({action:"create",data:syncSnapshot()});localStorage.setItem("gamos_sync_token",j.token);syncLastRemote=new Date().toISOString();const link=syncLink();try{await navigator.clipboard.writeText(link)}catch{};syncStatus("✅ Έτοιμο! Ο προσωπικός σύνδεσμος αντιγράφηκε.");setTimeout(syncScreen,900)}catch(e){syncStatus("⚠️ "+e.message)}};
+ if($("syncCopy"))$("syncCopy").onclick=async()=>{const link=syncLink();try{await navigator.clipboard.writeText(link)}catch{};syncStatus("✅ Ο προσωπικός σύνδεσμος αντιγράφηκε.")};
+ if($("syncNow"))$("syncNow").onclick=async()=>{await syncPull(true);await syncPush()};
+ if($("syncNew"))$("syncNew").onclick=()=>{localStorage.removeItem("gamos_sync_token");syncLastRemote="";syncScreen()};
 }
 window.syncScreen=syncScreen;
-(function(){const p=new URLSearchParams(location.search),t=p.get("sync");if(t&&!localStorage.getItem("gamos_sync_token")){localStorage.setItem("gamos_sync_token",t);syncPull(true).then(()=>location.href=location.origin+location.pathname)}})();
-if(!window.__syncInterval){window.__syncInterval=setInterval(async()=>{if(syncToken()){await syncPull();const local=JSON.stringify(syncSnapshot());if(!syncBusy&&local!==window.__lastSyncSnapshot){window.__lastSyncSnapshot=local;await syncPush()}}},5000);}
+(function(){const p=new URLSearchParams(location.search),t=p.get("sync");if(t){localStorage.setItem("gamos_sync_token",t);syncPull(true).then(ok=>{if(ok)history.replaceState({},document.title,location.pathname);else{localStorage.removeItem("gamos_sync_token");syncScreen()}})}})();
+if(!window.__syncInterval){window.__syncInterval=setInterval(async()=>{if(syncToken()&&!syncBusy){await syncPull();const local=JSON.stringify(syncSnapshot());if(local!==window.__lastSyncSnapshot){window.__lastSyncSnapshot=local;await syncPush()}}},5000);}
 function ensureExtraMenus(){
  const menu=$("sideMenu");if(!menu)return;
  [["disksBtn","💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",disks],["pendingBtn","📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",pending],["deliveriesBtn","📦 ΠΑΡΑΔΟΣΕΙΣ",deliveries]].forEach(([id,label,fn])=>{
