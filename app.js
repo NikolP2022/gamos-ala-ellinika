@@ -290,13 +290,15 @@ const SYNC_URL="https://vbkuvexyqehmpeeejqbh.supabase.co/functions/v1/gamos-sync
 const SYNC_KEYS=["gamos_ala_ellinika_v3","gamos_daily_schedule_v2","gamos_collaborators_v1","gamos_happy_orders_v2","gamos_appointments_mysteries_v1","gamos_appointments_partners_v1","gamos_pending_v1","gamos_deliveries_v1","gamos_disks_v1"];
 let syncBusy=false,syncLastRemote="";
 function syncSnapshot(){const o={};SYNC_KEYS.forEach(k=>{const v=localStorage.getItem(k);if(v!==null)o[k]=v});return o}
+function syncAllLocalStorage(){const o={};for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(k&&k!=="gamos_sync_token")o[k]=localStorage.getItem(k)}return o}
+function syncApplyAll(data){syncBusy=true;Object.entries(data||{}).forEach(([k,v])=>{if(k!=="gamos_sync_token")localStorage.setItem(k,v)});syncBusy=false}
 function syncApply(data){syncBusy=true;Object.entries(data||{}).forEach(([k,v])=>localStorage.setItem(k,v));syncBusy=false}
 async function syncCall(body){const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});let j={};try{j=await r.json()}catch{}if(!r.ok)throw new Error(j.error||"Ο συγχρονισμός δεν είναι διαθέσιμος");return j}
 function syncStatus(t){const e=$("syncStatus");if(e)e.textContent=t}
 function syncToken(){return localStorage.getItem("gamos_sync_token")}
 function syncLink(){const t=syncToken();return t?location.origin+location.pathname+"?sync="+encodeURIComponent(t):""}
-async function syncPush(){const token=syncToken();if(!token||syncBusy)return false;try{await syncCall({action:"push",token,data:syncSnapshot()});syncStatus("☁️ ΣΥΓΧΡΟΝΙΣΜΕΝΟ");return true}catch(e){syncStatus("⚠️ "+e.message);return false}}
-async function syncPull(force=false){const token=syncToken();if(!token||syncBusy)return false;try{const j=await syncCall({action:"pull",token});if(force||j.updated_at!==syncLastRemote){syncLastRemote=j.updated_at;syncApply(j.data);syncStatus("☁️ ΣΥΓΧΡΟΝΙΣΜΕΝΟ")}return true}catch(e){syncStatus("⚠️ "+e.message);return false}}
+async function syncPush(){const token=syncToken();if(!token||syncBusy)return false;try{await syncCall({action:"push",token,data:syncAllLocalStorage()});syncStatus("☁️ ΣΥΓΧΡΟΝΙΣΜΕΝΟ");return true}catch(e){syncStatus("⚠️ "+e.message);return false}}
+async function syncPull(force=false){const token=syncToken();if(!token||syncBusy)return false;try{const j=await syncCall({action:"pull",token});if(force||j.updated_at!==syncLastRemote){syncLastRemote=j.updated_at;syncApplyAll(j.data);syncStatus("☁️ ΣΥΓΧΡΟΝΙΣΜΕΝΟ")}return true}catch(e){syncStatus("⚠️ "+e.message);return false}}
 function syncScreen(){
  const token=syncToken();
  let h="<button class=\"back\" id=\"syncBack\">← ΜΕΝΟΥ</button><h2>☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ</h2>";
@@ -313,7 +315,7 @@ function syncScreen(){
 }
 window.syncScreen=syncScreen;
 (function(){const p=new URLSearchParams(location.search),t=p.get("sync");if(t){localStorage.setItem("gamos_sync_token",t);syncPull(true).then(ok=>{if(ok)history.replaceState({},document.title,location.pathname);else{localStorage.removeItem("gamos_sync_token");syncScreen()}})}})();
-if(!window.__syncInterval){window.__syncInterval=setInterval(async()=>{if(syncToken()&&!syncBusy){await syncPull();const local=JSON.stringify(syncSnapshot());if(local!==window.__lastSyncSnapshot){window.__lastSyncSnapshot=local;await syncPush()}}},5000);}
+if(!window.__syncInterval){window.__syncInterval=setInterval(async()=>{if(syncToken()&&!syncBusy){await syncPull();const local=JSON.stringify(syncAllLocalStorage());if(local!==window.__lastSyncSnapshot){window.__lastSyncSnapshot=local;await syncPush()}}},5000);}
 function ensureExtraMenus(){
  const menu=$("sideMenu");if(!menu)return;
  [["disksBtn","💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",disks],["pendingBtn","📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",pending],["deliveriesBtn","📦 ΠΑΡΑΔΟΣΕΙΣ",deliveries]].forEach(([id,label,fn])=>{
