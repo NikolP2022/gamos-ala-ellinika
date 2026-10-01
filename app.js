@@ -425,7 +425,7 @@ function openSimpleFolder(kind,i,cats,key,existing,adding){
     h+='<label class="collab-label">ΣΗΜΕΙΩΣΕΙΣ / ΤΟΠΟΘΕΣΙΑ / ΕΛΕΥΘΕΡΟΣ ΧΩΡΟΣ</label>';
   }else{
     h+='<label class="collab-label">ΟΝΟΜΑ / ΠΕΛΑΤΗΣ</label><input id="simpleName" class="collab-name" value="'+esc(x.name||"")+'" placeholder="Γράψε όνομα...">';
-    h+='<label class="collab-label">ΗΜΕΡΟΜΗΝΙΑ</label><input id="simpleDate" type="date" value="'+esc(x.date||"")+'">';
+    h+='<label class="collab-label">ΗΜΕΡΟΜΗΝΙΑ</label><input id="simpleDate" type="text" class="date-picker" readonly autocomplete="off" value="'+esc(x.date||"")+'" placeholder="📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ">';
     h+='<label class="collab-label">ΩΡΑ</label><input id="simpleTime" type="time" value="'+esc(x.time||"")+'">';
     h+='<label class="collab-label">ΣΗΜΕΙΩΣΕΙΣ</label>';
   }
