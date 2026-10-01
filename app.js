@@ -260,6 +260,7 @@ function appointmentFields(kind,item){
       saveAppts(APPT_PARTNER_KEY,upsert(getAppts(APPT_PARTNER_KEY),x));
     }
     appointmentFolder(kind);
+    renderDaily();
   };
 }
 function timeToMinutes(t){if(!/^\d{2}:\d{2}$/.test(String(t||"")))return null;const [h,m]=String(t).split(":").map(Number);return h*60+m}
