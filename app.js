@@ -366,8 +366,8 @@ const APPT_PARTNER_KEY="gamos_appointments_partners_v1";
 function getAppts(key){const x=JSON.parse(localStorage.getItem(key)||"[]");return Array.isArray(x)?x:[]}
 function saveAppts(key,x){localStorage.setItem(key,JSON.stringify(x))}
 function appointmentFields(kind,item){
-  const dateField=(label,value)=>`<div class="field"><label>${label}</label><input type="text" name="${label}" class="date-picker" readonly autocomplete="off" inputmode="none" placeholder="📅 ΠΑΤΗΣΕ ΓΙΑ ΗΜΕΡΟΛΟΓΙΟ" value="${esc(value||"")}" style="cursor:pointer"></div>`;
-  const timeField=(label,value)=>`<div class="field"><label>${label}</label><input type="text" name="${label}" class="time-picker" readonly autocomplete="off" inputmode="none" placeholder="🕐 ΠΑΤΗΣΕ ΓΙΑ 24ΩΡΟ ΡΟΛΟΪ" value="${esc(value||"")}" style="cursor:pointer"></div>`;
+  const dateField=(label,value)=>`<div class="field"><label>${label}</label><input type="hidden" name="${label}" value="${esc(value||"")}" data-picker-value><button type="button" class="appointment-picker appointment-date-trigger" data-picker-kind="date" data-field="${label}">${value?"📅 "+esc(value):"📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ"}</button></div>`;
+  const timeField=(label,value)=>`<div class="field"><label>${label}</label><input type="hidden" name="${label}" value="${esc(value||"")}" data-picker-value><button type="button" class="appointment-picker appointment-time-trigger" data-picker-kind="time" data-field="${label}">${value?"🕐 "+esc(value):"🕐 ΕΠΙΛΕΞΕ ΩΡΑ"}</button></div>`;
   const mystery=kind==="mystery";
   const f=item||{};
   let h='<button class="back" id="apptListBack">← ΡΑΝΤΕΒΟΥ</button><h2>'+ (mystery?"📁 Ραντεβού μυστήριου":"📁 Ραντεβού για συνεργασία") +'</h2><form id="apptForm">';
@@ -384,14 +384,28 @@ function appointmentFields(kind,item){
   }
   h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ</button></form>';
   $("detailMount").innerHTML=h;show("detailView");
-  // Ρητή σήμανση πεδίων ραντεβού, ανεξάρτητα από το γενικό renderer.
-  $("detailMount").querySelectorAll('input[name="ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ"],input[name="ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ"]').forEach(inp=>{
-    inp.type="text";inp.classList.add("date-picker");inp.readOnly=true;inp.inputMode="none";inp.autocomplete="off";inp.placeholder="📅 ΠΑΤΗΣΕ ΓΙΑ ΗΜΕΡΟΛΟΓΙΟ";inp.style.cursor="pointer";
+  const appointmentMount=$("detailMount");
+  appointmentMount.querySelectorAll(".appointment-picker").forEach(btn=>{
+    btn.style.width="100%";
+    btn.style.minHeight="48px";
+    btn.style.border="1px solid #d8cbb9";
+    btn.style.borderRadius="10px";
+    btn.style.background="#fff";
+    btn.style.fontWeight="700";
+    btn.style.cursor="pointer";
+    btn.onclick=()=>{
+      const hidden=btn.parentElement.querySelector('input[data-picker-value]');
+      if(btn.dataset.pickerKind==="date"){
+        openCalendarPicker(hidden);
+        const sync=()=>{btn.textContent=hidden.value?"📅 "+hidden.value:"📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ";hidden.removeEventListener("change",sync)};
+        hidden.addEventListener("change",sync);
+      }else{
+        openClock24(hidden);
+        const sync=()=>{btn.textContent=hidden.value?"🕐 "+hidden.value:"🕐 ΕΠΙΛΕΞΕ ΩΡΑ";hidden.removeEventListener("change",sync)};
+        hidden.addEventListener("change",sync);
+      }
+    };
   });
-  $("detailMount").querySelectorAll('input[name="ΩΡΑ ΡΑΝΤΕΒΟΥ"]').forEach(inp=>{
-    inp.type="text";inp.classList.add("time-picker");inp.readOnly=true;inp.inputMode="none";inp.autocomplete="off";inp.placeholder="🕐 ΠΑΤΗΣΕ ΓΙΑ 24ΩΡΟ ΡΟΛΟΪ";inp.style.cursor="pointer";
-  });
-  activateDateTimePickers($("detailMount"));
   $("apptListBack").onclick=()=>appointmentFolder(kind);
   $("apptForm").onsubmit=e=>{
     e.preventDefault();const fd=new FormData(e.target);const read=name=>{const el=e.target.querySelector(`[name="${name}"]`);return String(el?el.value:(fd.get(name)||"")).trim()};const x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:read("ΟΝΟΜΑ"),phone:read("ΤΗΛΕΦΩΝΟ"),date:read("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ"),time:read("ΩΡΑ ΡΑΝΤΕΒΟΥ")};
