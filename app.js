@@ -248,14 +248,18 @@ function saveArr(k,x){localStorage.setItem(k,JSON.stringify(x))}
 function simpleFolders(title,cats,key,kind){
   const arr=arrKey(key);
   let h='<button class="back" id="simpleBack">← ΜΕΝΟΥ</button><h2>'+title+'</h2>';
-  h+='<div class="folder-list">'+cats.map((c,i)=>'<button type="button" class="menu-item" data-i="'+i+'">📁 '+esc(c)+'</button>').join("")+'</div>';
+  h+='<div class="folder-list">'+cats.map((cat,i)=>{
+    const count=arr.filter(x=>x.category===cat).length;
+    return '<div class="simple-folder-row"><button type="button" class="menu-item" data-i="'+i+'">📁 '+esc(cat)+(count?' ('+count+')':'')+'</button><button type="button" class="primary add-simple" data-i="'+i+'">＋</button></div>';
+  }).join("")+'</div>';
   $("detailMount").innerHTML=h;show("detailView");
   $("simpleBack").onclick=()=>show("homeView");
   document.querySelectorAll("#detailMount .menu-item").forEach(b=>b.onclick=()=>openSimpleFolder(kind,Number(b.dataset.i),cats,key));
+  document.querySelectorAll("#detailMount .add-simple").forEach(b=>b.onclick=(e)=>{e.stopPropagation();openSimpleFolder(kind,Number(b.dataset.i),cats,key,null,true)});
 }
-function openSimpleFolder(kind,i,cats,key){
-  const arr=arrKey(key), existing=arr.find(x=>x.category===cats[i]);
-  const x=existing||{id:Date.now().toString(36)+Math.random().toString(36).slice(2),category:cats[i],notes:"",name:"",date:"",status:""};
+function openSimpleFolder(kind,i,cats,key,existing,adding){
+  const arr=arrKey(key), found=existing||(!adding&&arr.find(x=>x.category===cats[i]));
+  const x=found||{id:Date.now().toString(36)+Math.random().toString(36).slice(2),category:cats[i],notes:"",name:"",date:"",status:""};
   let h='<button class="back" id="simpleFolderBack">← '+(kind==="task"?"ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"ΠΑΡΑΔΟΣΕΙΣ":"ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ")+'</button><h2>📁 '+esc(x.category)+'</h2>';
   h+='<div class="collab-editor">';
   if(kind==="disk"){
@@ -267,18 +271,15 @@ function openSimpleFolder(kind,i,cats,key){
     h+='<label class="collab-label">ΣΗΜΕΙΩΣΕΙΣ</label>';
   }
   h+='<textarea id="simpleNotes" placeholder="Γράψε εδώ ό,τι χρειάζεσαι...">'+esc(x.notes||"")+'</textarea></div><button class="primary" id="saveSimple">💾 ΑΠΟΘΗΚΕΥΣΗ</button>';
-  if(existing)h+='<button class="danger" id="deleteSimple">🗑️ ΔΙΑΓΡΑΦΗ</button>';
+  if(found&&!adding) h+='<button class="danger" id="delSimple">🗑️ ΔΙΑΓΡΑΦΗ</button>';
   $("detailMount").innerHTML=h;show("detailView");
   $("simpleFolderBack").onclick=()=>simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);
   $("saveSimple").onclick=()=>{
-    x.name=$("simpleName")?.value||"";
-    x.date=$("simpleDate")?.value||"";
-    x.notes=$("simpleNotes").value;
-    const all=arrKey(key),n=all.findIndex(z=>z.category===x.category);
-    if(n>=0)all[n]=x;else all.push(x);saveArr(key,all);
-    simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);
+    const item={...x,name:$("simpleName").value,date:$("simpleDate")?$("simpleDate").value:"",notes:$("simpleNotes").value};
+    if(!adding){const idx=arr.findIndex(z=>z.id===x.id);if(idx>=0)arr[idx]=item;else arr.push(item)}else arr.push(item);
+    saveArr(key,arr);simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind);
   };
-  if($("deleteSimple"))$("deleteSimple").onclick=()=>{saveArr(key,arrKey(key).filter(z=>z.category!==x.category));simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind)};
+  if($("delSimple")) $("delSimple").onclick=()=>{saveArr(key,arr.filter(z=>z.id!==x.id));simpleFolders(kind==="task"?"📋 ΕΚΚΡΕΜΟΤΗΤΕΣ":kind==="delivery"?"📦 ΠΑΡΑΔΟΣΕΙΣ":"💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",cats,key,kind)};
 }
 function pending(){simpleFolders("📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",TASK_CATS,TASKS_KEY,"task")}
 function deliveries(){simpleFolders("📦 ΠΑΡΑΔΟΣΕΙΣ",DELIVERY_CATS,DELIVERIES_KEY,"delivery")}
