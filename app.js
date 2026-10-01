@@ -617,16 +617,22 @@ async function syncPull(){
     }
   }catch(e){console.warn("Cloud sync:",e.message)}
 }
+let syncPushChain=Promise.resolve();
+function syncSleep(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 async function syncPush(){
-  if(syncBusy)return;
-  syncBusy=true;
-  try{
-    const local=syncAllLocalStorage();
-    const j=await syncCall({action:"push",data:local});
-    syncLastRemote=j.updated_at||syncLastRemote;
-    window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-  }catch(e){console.warn("Cloud sync:",e.message)}
-  finally{syncBusy=false}
+  syncPushChain=syncPushChain.then(async()=>{
+    while(syncBusy)await syncSleep(50);
+    syncBusy=true;
+    try{
+      const local=syncAllLocalStorage();
+      const j=await syncCall({action:"push",data:local});
+      if(j.data)syncApplyAll(j.data);
+      syncLastRemote=j.updated_at||syncLastRemote;
+      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+    }catch(e){console.warn("Cloud sync:",e.message)}
+    finally{syncBusy=false}
+  });
+  return syncPushChain;
 }
 (function(){
   setTimeout(async()=>{
@@ -636,11 +642,10 @@ async function syncPush(){
       const local=syncAllLocalStorage();
       const j=await syncGetRemote();
       syncLastRemote=j.updated_at||null;
-      const remote=j.data||{};
-      const merged=syncMergeData(local,remote);
+      const merged=syncMergeData(local,j.data||{});
       syncApplyAll(merged);
-      if(Object.keys(merged).length)await syncCall({action:"push",data:merged});
       window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+      await syncPush();
     }catch(e){console.warn("Αρχικός συγχρονισμός:",e.message)}
     finally{syncBusy=false}
   },400);
@@ -648,22 +653,12 @@ async function syncPush(){
     if(syncBusy)return;
     const now=JSON.stringify(syncAllLocalStorage());
     if(now!==window.__lastSyncSnapshot){
-      syncBusy=true;
-      try{
-        const local=syncAllLocalStorage();
-        const j=await syncGetRemote();
-        const merged=syncMergeData(local,j.data||{});
-        syncApplyAll(merged);
-        await syncCall({action:"push",data:merged});
-        syncLastRemote=j.updated_at||syncLastRemote;
-        window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-      }catch(e){console.warn("Cloud sync:",e.message)}
-      finally{syncBusy=false}
+      await syncPush();
     }else{
       await syncPull();
     }
   },3000);
-})();
+})();;
 function syncScreen(){
  let h="<button class=\"back\" id=\"syncBack\">← ΜΕΝΟΥ</button><h2>☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ</h2>";
  h+="<p style=\"font-size:18px;line-height:1.5\"><b>Αυτόματος συγχρονισμός εργασίας</b><br>Η εφαρμογή συνδέεται στον ίδιο ασφαλή χώρο δεδομένων από όσες συσκευές χρειάζεσαι.</p>";
