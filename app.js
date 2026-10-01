@@ -17,13 +17,15 @@ function field(q,v=""){if(q.endsWith("□"))return '<div class="field check"><la
 function activateDateTimePickers(root){
   const scope=root||document;
   scope.querySelectorAll('input.date-picker').forEach(inp=>{
-    inp.addEventListener("click",e=>{e.preventDefault();openCalendarPicker(inp)});
-    inp.addEventListener("focus",()=>openCalendarPicker(inp));
+    if(inp.dataset.pickerBound==="1")return;
+    inp.dataset.pickerBound="1";
+    inp.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openCalendarPicker(inp)});
   });
   scope.querySelectorAll('input[type="time"]').forEach(inp=>{
+    if(inp.dataset.pickerBound==="1")return;
+    inp.dataset.pickerBound="1";
     inp.readOnly=true; inp.inputMode="none";
-    inp.addEventListener("click",e=>{e.preventDefault();openClock24(inp)});
-    inp.addEventListener("focus",()=>openClock24(inp));
+    inp.addEventListener("click",e=>{e.preventDefault();e.stopPropagation();openClock24(inp)});
   });
 }
 function openCalendarPicker(input){
@@ -147,40 +149,82 @@ function dailyDate(x){
   if(isIsoDate(x.date))return String(x.date);
   return findDateTimeDeep(x).date||"";
 }
-function renderDaily(){
-  const date=$("scheduleDate").value,rows=$("scheduleRows");rows.innerHTML="";
+function calendarEventSourceLabel(key,x){
+  if(key===TASKS_KEY)return "📋 "+(x.name||x.category||"Εκκρεμότητα");
+  if(key===DELIVERIES_KEY)return "📦 "+(x.name||x.category||"Παράδοση");
+  if(key===COLLAB_KEY)return "👥 "+(x.name||x.title||"Συνεργάτης");
+  if(key===HAPPY_ORDERS_KEY)return "📦 "+(x.title||x.name||"Παραγγελία");
+  if(key===DISKS_KEY)return "💾 "+(x.name||x.category||"Σκληρός δίσκος");
+  return "📌 "+(x.name||x.title||x.category||x.type||key);
+}
+function getCalendarEvents(date){
   const events=[];
-  const pushEvent=(time,label,action)=>{if(!time)return;events.push({time:String(time),label,action})};
-  data.forEach(x=>{const d=dailyDate(x),t=dailyTime(x);if(d===date&&t)pushEvent(t,eventTitle(x)+" — "+t,()=>detail(x));});
-  getAppts(APPT_MYSTERY_KEY).forEach((x,i)=>{if(x.date===date&&x.time)pushEvent(x.time,"📞 "+(x.name||"Ραντεβού Μυστηρίου")+" — "+x.time+(x.mystery?" — "+x.mystery:""),()=>openAppointment("mystery",i));});
-  getAppts(APPT_PARTNER_KEY).forEach((x,i)=>{if(x.date===date&&x.time)pushEvent(x.time,"👥 "+(x.name||"Ραντεβού Συνεργάτη")+" — "+x.time,()=>openAppointment("partner",i));});
-  arrKey(TASKS_KEY).forEach(x=>{if(x.date===date&&x.time)pushEvent(x.time,"📋 "+(x.name||x.category||"Εκκρεμότητα")+" — "+x.time,null);});
-  arrKey(DELIVERIES_KEY).forEach(x=>{if(x.date===date&&x.time)pushEvent(x.time,"📦 "+(x.name||x.category||"Παράδοση")+" — "+x.time,null);});
-  const handledKeys=new Set([KEY,DAYKEY,APPT_MYSTERY_KEY,APPT_PARTNER_KEY,TASKS_KEY,DELIVERIES_KEY,"gamos_collaborators_v1","gamos_happy_orders_v2","gamos_sync_token"]);
+  const add=(source,id,d,t,label,action,duration=0)=>{
+    if(d!==date||!isTime(t))return;
+    events.push({source,id,date:d,time:String(t),duration,label,action});
+  };
+  data.forEach(x=>{
+    const d=dailyDate(x),t=dailyTime(x);
+    if(d===date&&t)add("mystery",x.id,d,t,eventTitle(x)+" — "+t,()=>detail(x),0);
+  });
+  getAppts(APPT_MYSTERY_KEY).forEach((x,i)=>add("appointment-mystery",x.id,x.date,x.time,"📞 "+(x.name||"Ραντεβού Μυστηρίου")+" — "+x.time+(x.mystery?" — "+x.mystery:""),()=>openAppointment("mystery",i),60));
+  getAppts(APPT_PARTNER_KEY).forEach((x,i)=>add("appointment-partner",x.id,x.date,x.time,"👥 "+(x.name||"Ραντεβού Συνεργάτη")+" — "+x.time,()=>openAppointment("partner",i),60));
+
+  const explicitKeys=[TASKS_KEY,DELIVERIES_KEY,DISKS_KEY,COLLAB_KEY,HAPPY_ORDERS_KEY];
+  for(const key of explicitKeys){
+    let raw=null;
+    try{raw=JSON.parse(localStorage.getItem(key)||"null")}catch(e){raw=null}
+    const list=Array.isArray(raw)?raw:(raw&&typeof raw==="object"?Object.values(raw):[]);
+    list.forEach((x,i)=>{
+      const d=dailyDate(x),t=dailyTime(x);
+      if(d===date&&t)add(key,x.id||i,d,t,calendarEventSourceLabel(key,x)+" — "+t,null,0);
+    });
+  }
+
+  const handled=new Set([KEY,DAYKEY,APPT_MYSTERY_KEY,APPT_PARTNER_KEY,TASKS_KEY,DELIVERIES_KEY,DISKS_KEY,COLLAB_KEY,HAPPY_ORDERS_KEY,"gamos_sync_token"]);
   for(let i=0;i<localStorage.length;i++){
-    const k=localStorage.key(i);
-    if(!k||handledKeys.has(k))continue;
+    const key=localStorage.key(i);
+    if(!key||handled.has(key))continue;
     try{
-      const raw=JSON.parse(localStorage.getItem(k)||"null");
+      const raw=JSON.parse(localStorage.getItem(key)||"null");
       const list=Array.isArray(raw)?raw:(raw&&typeof raw==="object"?Object.values(raw):[]);
-      list.forEach(x=>{
+      list.forEach((x,j)=>{
         const d=dailyDate(x),t=dailyTime(x);
-        if(d===date&&t)pushEvent(t,"📌 "+(x.name||x.title||x.category||x.type||k)+" — "+t,null);
+        if(d===date&&t)add(key,x.id||j,d,t,calendarEventSourceLabel(key,x)+" — "+t,null,0);
       });
     }catch(e){}
   }
-  events.sort((a,b)=>(timeToMinutes(a.time)??1440)-(timeToMinutes(b.time)??1440));
+  return events.sort((a,b)=>(timeToMinutes(a.time)??1440)-(timeToMinutes(b.time)??1440));
+}
+function renderDaily(){
+  const date=$("scheduleDate").value,rows=$("scheduleRows");
+  rows.innerHTML="";
+  const events=getCalendarEvents(date);
   for(let h=0;h<=23;h++){
-    const t=String(h).padStart(2,"0")+":00";
-    const r=document.createElement("div");r.className="schedule-row";
-    r.innerHTML='<span>'+t+'</span><div class="schedule-cell"><div class="schedule-events"></div><input type="text" autocomplete="off" placeholder="Γράψε εδώ για τις '+t+'..."></div>';
-    const evBox=r.querySelector(".schedule-events");
+    const hour=String(h).padStart(2,"0")+":00";
+    const r=document.createElement("div");
+    r.className="schedule-row";
+    r.innerHTML='<span>'+hour+'</span><div class="schedule-cell"><div class="schedule-events"></div><input type="text" autocomplete="off" placeholder="Γράψε εδώ για τις '+hour+'..."></div>';
+    const box=r.querySelector(".schedule-events");
     events.filter(e=>{const tm=timeToMinutes(e.time);return tm!==null&&tm>=h*60&&tm<h*60+60}).forEach(e=>{
-      const b=document.createElement("button");b.type="button";b.className="event daily-event";b.textContent=e.label;b.onclick=()=>{if(e.action)e.action()};evBox.appendChild(b);
+      const b=document.createElement("button");
+      b.type="button";b.className="event daily-event";
+      b.textContent=e.duration?e.label+" ("+e.time+"–"+String(Math.floor((timeToMinutes(e.time)+e.duration)/60)).padStart(2,"0")+":"+String((timeToMinutes(e.time)+e.duration)%60).padStart(2,"0")+")":e.label;
+      b.onclick=()=>{if(e.action)e.action()};
+      box.appendChild(b);
     });
-    const input=r.querySelector("input");input.value=(daily[date]||{})[t]||"";
-    const persist=async()=>{daily[date]=daily[date]||{};daily[date][t]=input.value;localStorage.setItem(DAYKEY,JSON.stringify(daily));window.__lastSyncSnapshot="";if(typeof syncPush==="function")await syncPush()};
-    input.addEventListener("input",persist);input.addEventListener("change",persist);input.addEventListener("blur",persist);rows.appendChild(r);
+    const input=r.querySelector("input");
+    input.value=(daily[date]||{})[hour]||"";
+    const persist=async()=>{
+      daily[date]=daily[date]||{};
+      daily[date][hour]=input.value;
+      localStorage.setItem(DAYKEY,JSON.stringify(daily));
+      window.__lastSyncSnapshot="";
+      if(typeof syncPush==="function")await syncPush();
+    };
+    input.addEventListener("input",persist);
+    input.addEventListener("change",persist);
+    rows.appendChild(r);
   }
 }
 function init(){
