@@ -632,7 +632,7 @@ function syncThreeWayData(base,local,remote){
   return out;
 }
 async function syncCall(body){
-  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":"sb_publishable__nczNPWr3do_hqi6MCS0AQ_fjYCXhGk","Authorization":"Bearer sb_publishable__nczNPWr3do_hqi6MCS0AQ_fjYCXhGk"},body:JSON.stringify(body),cache:"no-store"});
+  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
   let j={};try{j=await r.json()}catch{}
   if(!r.ok){const e=new Error(j.error||"Σφάλμα συγχρονισμού");e.syncResponse=j;throw e}
   return j;
