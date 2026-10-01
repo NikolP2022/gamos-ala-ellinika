@@ -1,7 +1,7 @@
 const CACHE='gamos-ala-ellinika-pwa-v6';
 const ASSETS=[
  './','./index.html','./styles.css?v=20260921-2',
- './app.js?v=202610012005',
+ './app.js?v=202610012030',
  './icons/icon-192.png','./icons/icon-512.png',
  './manifest.webmanifest?v=20261001'
 ];
