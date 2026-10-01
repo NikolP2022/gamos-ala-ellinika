@@ -381,7 +381,15 @@ function appointmentFields(kind,item){
     h+='</div></div>';
   }
   h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ</button></form>';
-  $("detailMount").innerHTML=h;show("detailView");activateDateTimePickers($("detailMount"));
+  $("detailMount").innerHTML=h;show("detailView");
+  // Ρητή σήμανση πεδίων ραντεβού, ανεξάρτητα από το γενικό renderer.
+  $("detailMount").querySelectorAll('input[name="ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ"],input[name="ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ"]').forEach(inp=>{
+    inp.type="text";inp.classList.add("date-picker");inp.readOnly=true;inp.inputMode="none";inp.autocomplete="off";inp.placeholder="📅 ΠΑΤΗΣΕ ΓΙΑ ΗΜΕΡΟΛΟΓΙΟ";inp.style.cursor="pointer";
+  });
+  $("detailMount").querySelectorAll('input[name="ΩΡΑ ΡΑΝΤΕΒΟΥ"]').forEach(inp=>{
+    inp.type="text";inp.classList.add("time-picker");inp.readOnly=true;inp.inputMode="none";inp.autocomplete="off";inp.placeholder="🕐 ΠΑΤΗΣΕ ΓΙΑ 24ΩΡΟ ΡΟΛΟΪ";inp.style.cursor="pointer";
+  });
+  activateDateTimePickers($("detailMount"));
   $("apptListBack").onclick=()=>appointmentFolder(kind);
   $("apptForm").onsubmit=e=>{
     e.preventDefault();const fd=new FormData(e.target),x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:fd.get("ΟΝΟΜΑ")||"",phone:fd.get("ΤΗΛΕΦΩΝΟ")||"",date:fd.get("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ")||"",time:fd.get("ΩΡΑ ΡΑΝΤΕΒΟΥ")||""};
