@@ -116,7 +116,7 @@ function renderDaily(){
     i.addEventListener("blur",persist);
     rows.appendChild(r);
   }
-}}
+}
 function init(){ $("newBtn").onclick=()=>show("typeView"); $("calendarBtn").onclick=()=>{calendar();show("calendarView")}; $("menuBtn").onclick=()=>$("sideMenu").classList.remove("hidden"); $("closeMenu").onclick=()=>$("sideMenu").classList.add("hidden"); $("mysteriesBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");show("typeView")}; document.querySelectorAll(".type-card").forEach(b=>b.onclick=()=>form(b.dataset.type)); $("collaboratorsBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");collaborators()}; $("happyBoxBtn").onclick=()=>{ $("sideMenu").classList.add("hidden");happyBox()}; document.querySelectorAll(".back").forEach(b=>b.onclick=()=>show(b.dataset.back)); $("prevMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()-1,1);calendar()}; $("nextMonth").onclick=()=>{month=new Date(month.getFullYear(),month.getMonth()+1,1);calendar()}; const now=new Date();$("scheduleDate").value=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,10);$("scheduleDate").onchange=renderDaily;renderDaily();calendar()}
 window.show=show;window.form=form;window.calendar=calendar;window.detail=detail;
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",()=>{init();ensureHappyMenu()});else{init();ensureHappyMenu()}
