@@ -579,7 +579,31 @@ function syncApplyAll(data){syncBusy=true;Object.entries(data||{}).forEach(([k,v
 async function syncCall(body){const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});const j=await r.json();if(!r.ok)throw Error(j.error||"Σφάλμα συγχρονισμού");return j}
 async function syncPull(){if(syncBusy)return;try{const j=await syncCall({action:"pull"});if(j.updated_at&&j.updated_at!==syncLastRemote){syncLastRemote=j.updated_at;if(Object.keys(j.data||{}).length){syncApplyAll(j.data);location.reload()}}}catch(e){console.warn("Cloud sync:",e.message)}}
 async function syncPush(){if(syncBusy)return;try{const j=await syncCall({action:"push",data:syncAllLocalStorage()});syncLastRemote=j.updated_at}catch(e){console.warn("Cloud sync:",e.message)}}
-(function(){setTimeout(async()=>{await syncPull();window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());},1200);setInterval(async()=>{if(syncBusy)return;const now=JSON.stringify(syncAllLocalStorage());if(now!==window.__lastSyncSnapshot){window.__lastSyncSnapshot=now;await syncPush()}else await syncPull()},3000)})();
+(function(){
+  const hasLocalData=()=>Object.keys(syncAllLocalStorage()).length>0;
+  setTimeout(async()=>{
+    try{
+      if(hasLocalData()){
+        // Υπάρχουν ήδη τοπικά δεδομένα: πρώτα τα ανεβάζουμε ώστε η ανανέωση να μην τα αντικαταστήσει.
+        window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+        await syncPush();
+      }else{
+        await syncPull();
+        window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+      }
+    }catch(e){console.warn("Αρχικός συγχρονισμός:",e.message)}
+  },1200);
+  setInterval(async()=>{
+    if(syncBusy)return;
+    const now=JSON.stringify(syncAllLocalStorage());
+    if(now!==window.__lastSyncSnapshot){
+      window.__lastSyncSnapshot=now;
+      await syncPush();
+    }else{
+      await syncPull();
+    }
+  },3000);
+})();
 function syncScreen(){
  let h="<button class=\"back\" id=\"syncBack\">← ΜΕΝΟΥ</button><h2>☁️ ΣΥΓΧΡΟΝΙΣΜΟΣ ΣΥΣΚΕΥΩΝ</h2>";
  h+="<p style=\"font-size:18px;line-height:1.5\"><b>Αυτόματος συγχρονισμός εργασίας</b><br>Η εφαρμογή συνδέεται στον ίδιο ασφαλή χώρο δεδομένων από όσες συσκευές χρειάζεσαι.</p>";
