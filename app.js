@@ -572,6 +572,7 @@ function disks(){simpleFolders("💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",DISK_CATS,DISK
 window.pending=pending;window.deliveries=deliveries;window.disks=disks;
 // ===== CLOUD SYNC: CENTRAL WORKSPACE — THREE-WAY MERGE =====
 const SYNC_URL="https://vbkuvexyqehmpeeejqbh.supabase.co/functions/v1/gamos-sync";
+const SYNC_API_KEY="sb_publishable__nczNPWr3do_hqi6MCS0AQ_fjYCXhGk";
 const SYNC_REV_KEY="gamos_sync_revision_v1";
 const SYNC_DEVICE_KEY="gamos_sync_device_v1";
 let syncBusy=false,syncRevision=Number(localStorage.getItem(SYNC_REV_KEY)||0),syncTimer=null;
@@ -650,7 +651,7 @@ function syncThreeWayData(base,local,remote){
   return out;
 }
 async function syncCall(body){
-  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),cache:"no-store"});
+  const r=await fetch(SYNC_URL,{method:"POST",headers:{"Content-Type":"application/json","apikey":SYNC_API_KEY,"Authorization":"Bearer "+SYNC_API_KEY},body:JSON.stringify(body),cache:"no-store"});
   const j=await r.json();
   if(!r.ok){const e=new Error(j.error||"Σφάλμα συγχρονισμού");e.syncResponse=j;throw e}
   return j;
