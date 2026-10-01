@@ -574,6 +574,7 @@ window.pending=pending;window.deliveries=deliveries;window.disks=disks;
 const SYNC_URL="https://vbkuvexyqehmpeeejqbh.supabase.co/functions/v1/gamos-sync";
 const SYNC_TOKEN_KEY="gamos_sync_token_v2";
 const SYNC_REV_KEY="gamos_sync_revision_v2";
+const SYNC_DEVICE_KEY="";
 let syncBusy=false,syncTimer=null,syncRevision=Number(localStorage.getItem(SYNC_REV_KEY)||0);
 
 function syncToken(){return (localStorage.getItem(SYNC_TOKEN_KEY)||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
@@ -731,7 +732,7 @@ function syncScreen(){
   Storage.prototype.setItem=function(k,v){
     nativeSet.call(this,k,v);
     if(this!==localStorage || syncBusy || typeof syncPush!=="function") return;
-    if(k===SYNC_TOKEN_KEY||k===SYNC_REV_KEY||k===SYNC_DEVICE_KEY) return;
+    if(k===SYNC_TOKEN_KEY||k===SYNC_REV_KEY) return;
     clearTimeout(window.__syncSaveTimer);
     window.__syncSaveTimer=setTimeout(()=>syncPush(),250);
   };
@@ -752,8 +753,12 @@ function ensureExtraMenus(){
  const menu=$("sideMenu");if(!menu)return;
  [["disksBtn","💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",disks],["pendingBtn","📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",pending],["deliveriesBtn","📦 ΠΑΡΑΔΟΣΕΙΣ",deliveries]].forEach(([id,label,fn])=>{
    let b=$(id);if(!b){b=[...menu.querySelectorAll(".menu-item")].find(x=>x.textContent.includes(label.slice(2)))}
-   if(b){b.id=id;b.onclick=()=>{menu.classList.add("hidden");fn()}}
+   if(b&&typeof fn==="function")b.onclick=()=>{menu.classList.add("hidden");fn()};
  });
+ let sb=$("syncBtn");
+ if(sb){
+   sb.onclick=async(e)=>{e.preventDefault();menu.classList.add("hidden");if(typeof window.syncScreen==="function")window.syncScreen();else alert("Ο συγχρονισμός δεν φόρτωσε. Κάνε ανανέωση της εφαρμογής.");};
+ }
 }
 
 
