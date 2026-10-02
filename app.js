@@ -256,7 +256,21 @@ function renderDaily(){
       b.type="button";b.className="event daily-event";
       b.textContent=e.hasTime?(e.duration?e.label+" ("+e.time+"–"+String(Math.floor((timeToMinutes(e.time)+e.duration)/60)).padStart(2,"0")+":"+String((timeToMinutes(e.time)+e.duration)%60).padStart(2,"0")+")":e.label):"📌 "+e.label;
       b.title=e.hasTime?e.label:"Άνοιγμα καταχώρισης";
-      b.onclick=()=>{if(typeof e.action==="function"){e.action();}else if(e.source===TASKS_KEY){openSimpleFolder("task",0,TASK_CATS,TASKS_KEY,null,true);}else if(e.source===DELIVERIES_KEY){openSimpleFolder("delivery",0,DELIVERY_CATS,DELIVERIES_KEY,null,true);}else if(e.source===DISKS_KEY){openSimpleFolder("disk",0,DISK_CATS,DISKS_KEY,null,true);}else{console.warn("Δεν υπάρχει άνοιγμα για την καταχώριση",e);}};
+      b.onclick=()=>{
+        try{
+          if(typeof e.action==="function"){e.action();return;}
+          const raw=localStorage.getItem(e.source);
+          const list=raw?JSON.parse(raw):[];
+          const arr=Array.isArray(list)?list:Object.values(list||{});
+          const item=arr.find((x,i)=>String(x?.id??i)===String(e.id));
+          if(e.source===TASKS_KEY&&item){openSimpleFolder("task",Math.max(0,TASK_CATS.indexOf(item.category)),TASK_CATS,TASKS_KEY,item,false);return;}
+          if(e.source===DELIVERIES_KEY&&item){openSimpleFolder("delivery",Math.max(0,DELIVERY_CATS.indexOf(item.category)),DELIVERY_CATS,DELIVERIES_KEY,item,false);return;}
+          if(e.source===DISKS_KEY&&item){openSimpleFolder("disk",Math.max(0,DISK_CATS.indexOf(item.category)),DISK_CATS,DISKS_KEY,item,false);return;}
+          if(e.source===COLLAB_KEY&&item){const a=arr.findIndex(x=>String(x?.id)===String(e.id));if(a>=0)openCollaboratorFolder(a);return;}
+          if(e.source===HAPPY_ORDERS_KEY&&item){const a=arr.findIndex(x=>String(x?.id)===String(e.id));if(a>=0)openHappyOrder(a);return;}
+          console.warn("Δεν βρέθηκε η καταχώριση",e);
+        }catch(err){console.error("Άνοιγμα καταχώρισης:",err);alert("Δεν μπόρεσα να ανοίξω την καταχώριση.");}
+      };
       box.appendChild(b);
     });
     const input=r.querySelector("input");
