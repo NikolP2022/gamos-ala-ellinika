@@ -256,7 +256,7 @@ function renderDaily(){
       b.type="button";b.className="event daily-event";
       b.textContent=e.hasTime?(e.duration?e.label+" ("+e.time+"–"+String(Math.floor((timeToMinutes(e.time)+e.duration)/60)).padStart(2,"0")+":"+String((timeToMinutes(e.time)+e.duration)%60).padStart(2,"0")+")":e.label):"📌 "+e.label;
       b.title=e.hasTime?e.label:"Άνοιγμα καταχώρισης";
-      b.onclick=()=>{if(e.action)e.action();};
+      b.onclick=()=>{if(typeof e.action==="function"){e.action();}else if(e.source===TASKS_KEY){openSimpleFolder("task",0,TASK_CATS,TASKS_KEY,null,true);}else if(e.source===DELIVERIES_KEY){openSimpleFolder("delivery",0,DELIVERY_CATS,DELIVERIES_KEY,null,true);}else if(e.source===DISKS_KEY){openSimpleFolder("disk",0,DISK_CATS,DISKS_KEY,null,true);}else{console.warn("Δεν υπάρχει άνοιγμα για την καταχώριση",e);}};
       box.appendChild(b);
     });
     const input=r.querySelector("input");
