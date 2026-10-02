@@ -198,7 +198,31 @@ function getCalendarEvents(date){
     const list=Array.isArray(raw)?raw:(raw&&typeof raw==="object"?Object.values(raw):[]);
     list.forEach((x,i)=>{
       const d=dailyDate(x),t=dailyTime(x);
-      if(d===date)add(key,x.id||i,d,t,calendarEventSourceLabel(key,x)+(isTime(t)?" — "+t:""),null,0);
+      if(d!==date)return;
+      let action=null;
+      if(key===TASKS_KEY){
+        const ci=Math.max(0,TASK_CATS.indexOf(x.category));
+        action=()=>openSimpleFolder("task",ci,TASK_CATS,TASKS_KEY,x,false);
+      }else if(key===DELIVERIES_KEY){
+        const ci=Math.max(0,DELIVERY_CATS.indexOf(x.category));
+        action=()=>openSimpleFolder("delivery",ci,DELIVERY_CATS,DELIVERIES_KEY,x,false);
+      }else if(key===DISKS_KEY){
+        const ci=Math.max(0,DISK_CATS.indexOf(x.category));
+        action=()=>openSimpleFolder("disk",ci,DISK_CATS,DISKS_KEY,x,false);
+      }else if(key===COLLAB_KEY){
+        action=()=>{
+          const latest=JSON.parse(localStorage.getItem(COLLAB_KEY)||"[]");
+          const idx=latest.findIndex(z=>String(z.id)===String(x.id));
+          if(idx>=0)openCollaboratorFolder(idx);
+        };
+      }else if(key===HAPPY_ORDERS_KEY){
+        action=()=>{
+          const latest=getHappyOrders();
+          const idx=latest.findIndex(z=>String(z.id)===String(x.id));
+          if(idx>=0)openHappyOrder(idx);
+        };
+      }
+      add(key,x.id||i,d,t,calendarEventSourceLabel(key,x)+(isTime(t)?" — "+t:""),action,0);
     });
   }
 
