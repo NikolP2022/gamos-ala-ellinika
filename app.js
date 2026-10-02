@@ -186,7 +186,7 @@ function getCalendarEvents(date){
   };
   data.forEach(x=>{
     const d=dailyDate(x),t=dailyTime(x);
-    if(d===date&&t)add("mystery",x.id,d,t,eventTitle(x)+" — "+t,()=>detail(x),0);
+    if(d===date)add("mystery",x.id,d,t,eventTitle(x)+" — "+t,()=>detail(x),0);
   });
   getAppts(APPT_MYSTERY_KEY).forEach((x,i)=>add("appointment-mystery",x.id,x.date,x.time,"📞 "+(x.name||"Ραντεβού Μυστηρίου")+" — "+x.time+(x.mystery?" — "+x.mystery:""),()=>openAppointment("mystery",i),60));
   getAppts(APPT_PARTNER_KEY).forEach((x,i)=>add("appointment-partner",x.id,x.date,x.time,"👥 "+(x.name||"Ραντεβού Συνεργάτη")+" — "+x.time,()=>openAppointment("partner",i),60));
@@ -198,7 +198,7 @@ function getCalendarEvents(date){
     const list=Array.isArray(raw)?raw:(raw&&typeof raw==="object"?Object.values(raw):[]);
     list.forEach((x,i)=>{
       const d=dailyDate(x),t=dailyTime(x);
-      if(d===date&&t)add(key,x.id||i,d,t,calendarEventSourceLabel(key,x)+" — "+t,null,0);
+      if(d===date)add(key,x.id||i,d,t,calendarEventSourceLabel(key,x)+(isTime(t)?" — "+t:""),null,0);
     });
   }
 
@@ -211,7 +211,7 @@ function getCalendarEvents(date){
       const list=Array.isArray(raw)?raw:(raw&&typeof raw==="object"?Object.values(raw):[]);
       list.forEach((x,j)=>{
         const d=dailyDate(x),t=dailyTime(x);
-        if(d===date&&t)add(key,x.id||j,d,t,calendarEventSourceLabel(key,x)+" — "+t,null,0);
+        if(d===date)add(key,x.id||j,d,t,calendarEventSourceLabel(key,x)+(isTime(t)?" — "+t:""),null,0);
       });
     }catch(e){}
   }
