@@ -180,8 +180,9 @@ function calendarEventSourceLabel(key,x){
 function getCalendarEvents(date){
   const events=[];
   const add=(source,id,d,t,label,action,duration=0)=>{
-    if(d!==date||!isTime(t))return;
-    events.push({source,id,date:d,time:String(t),duration,label,action});
+    if(d!==date||!isIsoDate(d))return;
+    const hasTime=isTime(t);
+    events.push({source,id,date:d,time:hasTime?String(t):"00:00",hasTime,duration,label:hasTime?label:label.replace(/\\s+—\\s+undefined$/,""),action});
   };
   data.forEach(x=>{
     const d=dailyDate(x),t=dailyTime(x);
@@ -229,8 +230,9 @@ function renderDaily(){
     events.filter(e=>{const tm=timeToMinutes(e.time);return tm!==null&&tm>=h*60&&tm<h*60+60}).forEach(e=>{
       const b=document.createElement("button");
       b.type="button";b.className="event daily-event";
-      b.textContent=e.duration?e.label+" ("+e.time+"–"+String(Math.floor((timeToMinutes(e.time)+e.duration)/60)).padStart(2,"0")+":"+String((timeToMinutes(e.time)+e.duration)%60).padStart(2,"0")+")":e.label;
-      b.onclick=()=>{if(e.action)e.action()};
+      b.textContent=e.hasTime?(e.duration?e.label+" ("+e.time+"–"+String(Math.floor((timeToMinutes(e.time)+e.duration)/60)).padStart(2,"0")+":"+String((timeToMinutes(e.time)+e.duration)%60).padStart(2,"0")+")":e.label):"📌 "+e.label;
+      b.title=e.hasTime?e.label:"Άνοιγμα καταχώρισης";
+      b.onclick=()=>{if(e.action)e.action();};
       box.appendChild(b);
     });
     const input=r.querySelector("input");
