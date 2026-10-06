@@ -22,33 +22,69 @@ window.openNotesFolder=function(){
   var detail=document.getElementById("detailView"),mount=document.getElementById("detailMount");
   if(!detail||!mount)return;
   detail.classList.remove("hidden");
-  var key="gamos_notes_v1",arr=[];
-  try{arr=JSON.parse(localStorage.getItem(key)||"[]");if(!Array.isArray(arr))arr=[]}catch(e){arr=[]}
+  var cats=[
+    ["followup","＋ ΚΕΙΜΕΝΑ ΓΙΑ FOLLOW UP"],
+    ["sms","＋ ΚΕΙΜΕΝΑ ΓΙΑ ΜΗΝΥΜΑΤΑ SMS"],
+    ["closed_email","＋ ΑΥΤΟΜΑΤΟΠΟΙΗΜΕΝΟ ΜΗΝΥΜΑ ΓΙΑ EMAIL ΓΙΑ ΚΛΕΙΣΜΕΝΑ ΜΥΣΤΗΡΙΑ"],
+    ["interested_email","＋ ΑΥΤΟΜΑΤΟΠΟΙΗΜΕΝΟ EMAIL ΓΙΑ ΕΝΔΙΑΦΕΡΟΜΕΝΑ ΜΥΣΤΗΡΙΑ"]
+  ];
   var h='<button class="back" type="button" id="notesBack">← ΜΕΝΟΥ</button><h2>📝 ΣΗΜΕΙΩΣΕΙΣ</h2>';
-  h+='<button class="primary big" type="button" id="addNote">＋ ΣΗΜΕΙΩΣΕΙΣ</button><div class="potential-list">';
-  if(!arr.length)h+='<div class="empty-state">Δεν υπάρχουν ακόμη σημειώσεις.</div>';
+  h+='<div class="notes-category-list">';
+  cats.forEach(function(c){h+='<button type="button" class="primary big note-category" data-cat="'+c[0]+'">'+c[1]+'</button>'});
+  h+='</div>';
+  mount.innerHTML=h;
+  document.getElementById("notesBack").onclick=function(){detail.classList.add("hidden");document.getElementById("homeView").classList.remove("hidden")};
+  mount.querySelectorAll(".note-category").forEach(function(b){b.onclick=function(){window.openNotesCategory(b.dataset.cat)}});
+};
+window.openNotesCategory=function(cat){
+  var names={
+    followup:"ΚΕΙΜΕΝΑ ΓΙΑ FOLLOW UP",
+    sms:"ΚΕΙΜΕΝΑ ΓΙΑ ΜΗΝΥΜΑΤΑ SMS",
+    closed_email:"ΑΥΤΟΜΑΤΟΠΟΙΗΜΕΝΟ ΜΗΝΥΜΑ ΓΙΑ EMAIL ΓΙΑ ΚΛΕΙΣΜΕΝΑ ΜΥΣΤΗΡΙΑ",
+    interested_email:"ΑΥΤΟΜΑΤΟΠΟΙΗΜΕΝΟ EMAIL ΓΙΑ ΕΝΔΙΑΦΕΡΟΜΕΝΑ ΜΥΣΤΗΡΙΑ"
+  };
+  var key="gamos_notes_v2_"+cat,arr=[];try{arr=JSON.parse(localStorage.getItem(key)||"[]")}catch(e){}
+  if(!Array.isArray(arr))arr=[];
+  var mount=document.getElementById("detailMount");
+  var h='<button class="back" type="button" id="notesCatBack">← ΣΗΜΕΙΩΣΕΙΣ</button><h2>📝 '+names[cat]+'</h2>';
+  h+='<button class="primary big" type="button" id="addCategoryNote">＋ ΝΕΟ ΚΕΙΜΕΝΟ</button><div class="potential-list">';
+  if(!arr.length)h+='<div class="empty-state">Δεν υπάρχει ακόμη κείμενο σε αυτή την κατηγορία.</div>';
   arr.slice().reverse().forEach(function(x){
-    h+='<button type="button" class="potential-card note-card" data-id="'+String(x.id).replace(/"/g,"&quot;")+'"><div class="potential-name">📝 '+(x.title||"Χωρίς τίτλο")+'</div><div class="potential-notes">'+(x.text||"")+'</div></button>';
+    h+='<div class="note-item potential-card" data-id="'+String(x.id).replace(/"/g,"&quot;")+'"><div class="potential-name">📝 '+(x.title||"Χωρίς τίτλο")+'</div><div class="potential-notes">'+String(x.text||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/\n/g,"<br>")+'</div><div class="note-actions"><button type="button" class="secondary edit-note">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button type="button" class="danger delete-note">🗑️ ΔΙΑΓΡΑΦΗ</button></div></div>';
   });
   h+='</div>';mount.innerHTML=h;
-  document.getElementById("notesBack").onclick=function(){detail.classList.add("hidden");document.getElementById("homeView").classList.remove("hidden")};
-  document.getElementById("addNote").onclick=function(){window.openNoteEditor(null)};
-  mount.querySelectorAll(".note-card").forEach(function(b){b.onclick=function(){window.openNoteEditor(arr.find(function(x){return String(x.id)===String(b.dataset.id)}))}});
+  document.getElementById("notesCatBack").onclick=window.openNotesFolder;
+  document.getElementById("addCategoryNote").onclick=function(){window.openNoteEditor(null,cat)};
+  mount.querySelectorAll(".note-item").forEach(function(card){
+    var item=arr.find(function(x){return String(x.id)===String(card.dataset.id)});
+    card.onclick=function(e){if(e.target.closest(".note-actions"))return;window.openNoteEditor(item,cat)};
+    card.querySelector(".edit-note").onclick=function(e){e.stopPropagation();window.openNoteEditor(item,cat)};
+    card.querySelector(".delete-note").onclick=function(e){
+      e.stopPropagation();
+      if(confirm("Να διαγραφεί αυτό το κείμενο;")){
+        localStorage.setItem(key,JSON.stringify(arr.filter(function(z){return String(z.id)!==String(item.id)})));
+        window.openNotesCategory(cat);
+      }
+    };
+  });
 };
-window.openNoteEditor=function(existing){
-  var key="gamos_notes_v1",arr=[];try{arr=JSON.parse(localStorage.getItem(key)||"[]")}catch(e){}
+window.openNoteEditor=function(existing,cat){
+  cat=cat||"followup";
+  var names={followup:"ΚΕΙΜΕΝΑ ΓΙΑ FOLLOW UP",sms:"ΚΕΙΜΕΝΑ ΓΙΑ ΜΗΝΥΜΑΤΑ SMS",closed_email:"ΑΥΤΟΜΑΤΟΠΟΙΗΜΕΝΟ ΜΗΝΥΜΑ ΓΙΑ EMAIL ΓΙΑ ΚΛΕΙΣΜΕΝΑ ΜΥΣΤΗΡΙΑ",interested_email:"ΑΥΤΟΜΑΤΟΠΟΙΗΜΕΝΟ EMAIL ΓΙΑ ΕΝΔΙΑΦΕΡΟΜΕΝΑ ΜΥΣΤΗΡΙΑ"};
+  var key="gamos_notes_v2_"+cat,arr=[];try{arr=JSON.parse(localStorage.getItem(key)||"[]")}catch(e){}
   if(!Array.isArray(arr))arr=[];
   var x=existing||{id:Date.now().toString(36)+Math.random().toString(36).slice(2),title:"",text:""};
   var mount=document.getElementById("detailMount");
-  mount.innerHTML='<button class="back" type="button" id="noteEditorBack">← ΣΗΜΕΙΩΣΕΙΣ</button><h2>📝 ΝΕΑ ΣΗΜΕΙΩΣΗ</h2><div class="collab-editor"><label class="collab-label">ΤΙΤΛΟΣ</label><input id="noteTitle" class="collab-name" value="'+(x.title||"").replace(/"/g,"&quot;")+'" placeholder="Γράψε τίτλο..."><label class="collab-label">ΣΗΜΕΙΩΣΗ</label><textarea id="noteText" style="min-height:220px" placeholder="Γράψε εδώ τη σημείωσή σου...">'+(x.text||"")+'</textarea></div><button class="primary" id="saveNote">💾 ΑΠΟΘΗΚΕΥΣΗ</button>'+(existing?'<button class="danger" id="deleteNote">🗑️ ΔΙΑΓΡΑΦΗ</button>':"");
-  document.getElementById("noteEditorBack").onclick=window.openNotesFolder;
+  mount.innerHTML='<button class="back" type="button" id="noteEditorBack">← '+names[cat]+'</button><h2>📝 '+(existing?"ΕΠΕΞΕΡΓΑΣΙΑ ΚΕΙΜΕΝΟΥ":"ΝΕΟ ΚΕΙΜΕΝΟ")+'</h2><div class="collab-editor"><label class="collab-label">ΤΙΤΛΟΣ</label><input id="noteTitle" class="collab-name" value="'+String(x.title||"").replace(/"/g,"&quot;")+'" placeholder="Π.χ. Follow Up 1..."><label class="collab-label">ΚΕΙΜΕΝΟ</label><textarea id="noteText" style="min-height:300px" placeholder="Γράψε εδώ ολόκληρο το μήνυμα / email...">'+String(x.text||"").replace(/</g,"&lt;").replace(/>/g,"&gt;")+'</textarea></div><button class="primary" id="saveNote">💾 ΑΠΟΘΗΚΕΥΣΗ</button>'+(existing?'<button class="danger" id="deleteNote">🗑️ ΔΙΑΓΡΑΦΗ</button>':"");
+  document.getElementById("noteEditorBack").onclick=function(){window.openNotesCategory(cat)};
   document.getElementById("saveNote").onclick=function(){
-    x.title=document.getElementById("noteTitle").value.trim();
-    x.text=document.getElementById("noteText").value.trim();
-    if(!x.text&&!x.title){alert("⚠️ Γράψε πρώτα τη σημείωση.");return}
+    x.title=document.getElementById("noteTitle").value.trim();x.text=document.getElementById("noteText").value.trim();
+    if(!x.title&&!x.text){alert("⚠️ Γράψε πρώτα το κείμενο.");return}
     var i=arr.findIndex(function(z){return String(z.id)===String(x.id)});if(i>=0)arr[i]=x;else arr.push(x);
-    localStorage.setItem(key,JSON.stringify(arr));window.openNotesFolder();
+    localStorage.setItem(key,JSON.stringify(arr));window.openNotesCategory(cat);
   };
-  var d=document.getElementById("deleteNote");if(d)d.onclick=function(){localStorage.setItem(key,JSON.stringify(arr.filter(function(z){return String(z.id)!==String(x.id)})));window.openNotesFolder()};
+  var d=document.getElementById("deleteNote");if(d)d.onclick=function(){
+    if(confirm("Να διαγραφεί αυτό το κείμενο;")){localStorage.setItem(key,JSON.stringify(arr.filter(function(z){return String(z.id)!==String(x.id)})));window.openNotesCategory(cat)}
+  };
 };
 </script><script src="app.js?v=202610061430"></script><script>if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("./sw.js")})}</script><script>(function(){let p=null;window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();p=e;var b=document.getElementById("installAppBtn");if(b)b.style.display="block"});window.addEventListener("appinstalled",function(){p=null;var b=document.getElementById("installAppBtn");if(b)b.style.display="none"});var b=document.getElementById("installAppBtn");if(b)b.addEventListener("click",async function(){if(p){p.prompt();await p.userChoice;p=null;return}alert("Στο Chrome πάτησε ⋮ και επίλεξε «Προσθήκη στην αρχική οθόνη» ή «Εγκατάσταση εφαρμογής».")})})();</script></body></html>
