@@ -291,6 +291,29 @@ function renderDaily(){
     rows.appendChild(r);
   }
 }
+const __renderDailyOriginal=renderDaily;
+renderDaily=function(){
+  __renderDailyOriginal();
+  try{
+    const day=$("scheduleDate")?.value;
+    if(!day)return;
+    const rows=$("scheduleRows");
+    if(!rows)return;
+    potentialDailyItems(day).forEach(x=>{
+      const label=(x.time?x.time+" ":"")+"📅 ΠΙΘΑΝΗ ΚΡΑΤΗΣΗ — "+(x.name||"Ημερομηνία ενδιαφέροντος");
+      const target=x.time?rows.querySelector('[data-schedule-hour="'+x.time.slice(0,2)+':00"]'):null;
+      const row=target?target.closest(".schedule-row"):null;
+      const item=document.createElement("button");
+      item.type="button";item.className="schedule-potential-item";
+      item.textContent=label;item.title="Άνοιγμα πιθανής κράτησης";
+      item.onclick=()=>openPotential(x);
+      if(row){row.appendChild(item)}else{
+        const r=document.createElement("div");r.className="schedule-row schedule-potential-row";
+        r.innerHTML="<span>•</span>";r.appendChild(item);rows.appendChild(r);
+      }
+    });
+  }catch(e){console.warn("Potential bookings daily render:",e)}
+};
 function init(){
   $("newBtn").onclick=()=>show("typeView");
   $("calendarBtn").onclick=()=>{calendar();show("calendarView")};
@@ -820,9 +843,68 @@ window.syncScreen=syncScreen;
   window.addEventListener("focus",()=>syncReconcile());
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncReconcile()});
 })();
+
+// ===== ΠΙΘΑΝΕΣ ΚΡΑΤΗΣΕΙΣ =====
+const POTENTIAL_KEY="gamos_potential_bookings_v1";
+
+function potentialArr(){
+  const x=JSON.parse(localStorage.getItem(POTENTIAL_KEY)||"[]");
+  return Array.isArray(x)?x:[];
+}
+function savePotentialArr(x){localStorage.setItem(POTENTIAL_KEY,JSON.stringify(x))}
+
+function potentialBookings(){
+  const arr=potentialArr();
+  let h='<button class="back" id="potentialBack">← ΜΕΝΟΥ</button><h2>📅 ΠΙΘΑΝΕΣ ΚΡΑΤΗΣΕΙΣ</h2>';
+  h+='<button class="primary big" id="addPotential">＋ ΗΜΕΡΟΜΗΝΙΕΣ ΠΟΥ ΕΔΕΙΞΑΝ ΕΝΔΙΑΦΕΡΟΝ</button>';
+  h+='<div class="potential-list">';
+  if(!arr.length) h+='<div class="empty-state">Δεν υπάρχουν ακόμη ημερομηνίες που έδειξαν ενδιαφέρον.</div>';
+  arr.slice().reverse().forEach(x=>{
+    h+='<button type="button" class="potential-card" data-id="'+esc(x.id)+'">';
+    h+='<div class="potential-date">📅 '+esc(x.date||"Χωρίς ημερομηνία")+(x.time?' · 🕐 '+esc(x.time):"")+'</div>';
+    h+='<div class="potential-name">'+esc(x.name||"Χωρίς όνομα")+'</div>';
+    if(x.notes)h+='<div class="potential-notes">'+esc(x.notes)+'</div>';
+    h+='</button>';
+  });
+  h+='</div>';
+  $("detailMount").innerHTML=h;show("detailView");
+  $("potentialBack").onclick=()=>show("homeView");
+  $("addPotential").onclick=()=>openPotential();
+  document.querySelectorAll("#detailMount .potential-card").forEach(b=>b.onclick=()=>openPotential(arr.find(x=>String(x.id)===String(b.dataset.id))));
+}
+
+function openPotential(existing){
+  const x=existing||{id:Date.now().toString(36)+Math.random().toString(36).slice(2),name:"",date:"",time:"",notes:""};
+  let h='<button class="back" id="potentialFormBack">← ΠΙΘΑΝΕΣ ΚΡΑΤΗΣΕΙΣ</button><h2>📅 ΗΜΕΡΟΜΗΝΙΑ ΠΟΥ ΕΔΕΙΞΕ ΕΝΔΙΑΦΕΡΟΝ</h2>';
+  h+='<div class="collab-editor">';
+  h+='<label class="collab-label">ΟΝΟΜΑ / ΠΕΛΑΤΗΣ</label><input id="potentialName" class="collab-name" value="'+esc(x.name||"")+'" placeholder="Γράψε όνομα πελάτη...">';
+  h+='<label class="collab-label">ΗΜΕΡΟΜΗΝΙΑ</label><input id="potentialDate" type="text" class="date-picker" readonly autocomplete="off" value="'+esc(x.date||"")+'" placeholder="📅 ΕΠΙΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ">';
+  h+='<label class="collab-label">ΩΡΑ</label><input id="potentialTime" type="text" class="time-picker" readonly autocomplete="off" value="'+esc(x.time||"")+'" placeholder="🕐 ΕΠΙΛΕΞΕ ΩΡΑ">';
+  h+='<label class="collab-label">ΣΗΜΕΙΩΣΕΙΣ</label><textarea id="potentialNotes" placeholder="Τι ζήτησε / τι συμφωνήθηκε...">'+esc(x.notes||"")+'</textarea></div>';
+  h+='<button class="primary" id="savePotential">💾 ΑΠΟΘΗΚΕΥΣΗ</button>';
+  if(existing)h+='<button class="danger" id="deletePotential">🗑️ ΔΙΑΓΡΑΦΗ</button>';
+  $("detailMount").innerHTML=h;show("detailView");activateDateTimePickers($("detailMount"));
+  $("potentialFormBack").onclick=potentialBookings;
+  $("savePotential").onclick=()=>{
+    const item={...x,name:$("potentialName").value.trim(),date:$("potentialDate").value,time:$("potentialTime").value,notes:$("potentialNotes").value.trim()};
+    if(!item.date){alert("⚠️ Επίλεξε ημερομηνία.");return}
+    const a=potentialArr(),idx=a.findIndex(z=>String(z.id)===String(item.id));
+    if(idx>=0)a[idx]=item;else a.push(item);
+    savePotentialArr(a);renderDaily();potentialBookings();
+  };
+  if($("deletePotential"))$("deletePotential").onclick=()=>{
+    savePotentialArr(potentialArr().filter(z=>String(z.id)!==String(x.id)));renderDaily();potentialBookings();
+  };
+}
+window.potentialBookings=potentialBookings;
+
+function potentialDailyItems(day){
+  return potentialArr().filter(x=>x.date===day);
+}
+
 function ensureExtraMenus(){
  const menu=$("sideMenu");if(!menu)return;
- [["disksBtn","💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",disks],["pendingBtn","📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",pending],["deliveriesBtn","📦 ΠΑΡΑΔΟΣΕΙΣ",deliveries]].forEach(([id,label,fn])=>{
+ [["disksBtn","💾 ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ",disks],["pendingBtn","📋 ΕΚΚΡΕΜΟΤΗΤΕΣ",pending],["deliveriesBtn","📦 ΠΑΡΑΔΟΣΕΙΣ",deliveries],["potentialBtn","📅 ΠΙΘΑΝΕΣ ΚΡΑΤΗΣΕΙΣ",potentialBookings]].forEach(([id,label,fn])=>{
    let b=$(id);if(!b){b=[...menu.querySelectorAll(".menu-item")].find(x=>x.textContent.includes(label.slice(2)))}
    if(b&&typeof fn==="function")b.onclick=()=>{menu.classList.add("hidden");fn()};
  });
