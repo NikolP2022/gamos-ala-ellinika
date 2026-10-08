@@ -30,8 +30,14 @@ jobs:
           gradle-version: "8.10"
 
       - name: Build APK
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon clean :app:assembleDebug --stacktrace
         working-directory: android
+
+      - name: Verify APK
+        run: |
+          test -f android/app/build/outputs/apk/debug/app-debug.apk
+          ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+          unzip -t android/app/build/outputs/apk/debug/app-debug.apk >/dev/null
 
       - name: Prepare APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk Gamos-Ala-Ellinika.apk
