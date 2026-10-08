@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: ["main", "master"]
+    paths:
+      - "android/**"
+      - ".github/workflows/android-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.10"
+
+      - name: Build APK
+        run: gradle --no-daemon :app:assembleDebug
+        working-directory: android
+
+      - name: Prepare APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Gamos-Ala-Ellinika.apk
+
+      - name: Publish permanent download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: ΓΑΜΟΣ ΑΛΑ ΕΛΛΗΝΙΚΑ — Android
+          body: |
+            Επίσημη έκδοση Android της εφαρμογής ΓΑΜΟΣ ΑΛΑ ΕΛΛΗΝΙΚΑ.
+            Το link λήψης παραμένει σταθερό.
+          files: Gamos-Ala-Ellinika.apk
+          make_latest: false
+          fail_on_unmatched_files: true
