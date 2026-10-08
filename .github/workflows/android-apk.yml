@@ -39,6 +39,13 @@ jobs:
           ls -lh android/app/build/outputs/apk/debug/app-debug.apk
           unzip -t android/app/build/outputs/apk/debug/app-debug.apk >/dev/null
 
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Gamos-Ala-Ellinika-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
       - name: Prepare APK
         run: cp android/app/build/outputs/apk/debug/app-debug.apk Gamos-Ala-Ellinika.apk
 
