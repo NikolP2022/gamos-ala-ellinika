@@ -3,7 +3,7 @@
     <application
         android:theme="@style/AppTheme"
         android:label="ΓΑΜΟΣ ΑΛΑ ΕΛΛΗΝΙΚΑ"
-        android:icon="@android:drawable/sym_def_app_icon"
+        android:icon="@drawable/app_icon"
         android:usesCleartextTraffic="false"
         android:allowBackup="true">
         <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true">
