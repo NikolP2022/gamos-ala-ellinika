@@ -1,4 +1,4 @@
-const CACHE='gamos-ala-ellinika-pwa-v8';
+const CACHE='gamos-ala-ellinika-pwa-v9';
 const BASE='./';
 const ASSETS=[
  './',
