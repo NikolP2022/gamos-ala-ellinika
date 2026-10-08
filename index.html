@@ -94,7 +94,35 @@ window.openNoteEditor=function(existing,cat){
 <a href="https://github.com/NikolP2022/gamos-ala-ellinika/releases/download/android-latest/Gamos-Ala-Ellinika.apk" style="padding:18px;border-radius:14px;background:#344b43;color:white;text-decoration:none;font-size:20px;font-weight:bold">🤖 ANDROID — ΛΗΨΗ APK</a>
 <a href="./" style="padding:18px;border-radius:14px;border:2px solid #344b43;color:#344b43;text-decoration:none;font-size:20px;font-weight:bold">🍎 iPHONE / iPAD — ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ</a>
 <a href="./" style="padding:18px;border-radius:14px;border:2px solid #344b43;color:#344b43;text-decoration:none;font-size:20px;font-weight:bold">💻 ΥΠΟΛΟΓΙΣΤΗΣ — ΑΝΟΙΓΜΑ ΕΦΑΡΜΟΓΗΣ</a>
-</div></section></body><script>
+</div></section><script>
+(function(){
+ let deferredPrompt=null;
+ const btn=document.getElementById('installAppBtn');
+ window.addEventListener('beforeinstallprompt',function(e){
+   e.preventDefault(); deferredPrompt=e;
+   if(btn) btn.style.display='block';
+ });
+ window.addEventListener('appinstalled',function(){
+   deferredPrompt=null;
+   if(btn) btn.style.display='none';
+ });
+ if(btn) btn.addEventListener('click',async function(){
+   if(deferredPrompt){
+     deferredPrompt.prompt();
+     try{await deferredPrompt.userChoice;}catch(e){}
+     deferredPrompt=null;
+     btn.style.display='none';
+   }else{
+     alert('Για Android: Chrome → ⋮ → Προσθήκη στην αρχική οθόνη / Εγκατάσταση εφαρμογής. Για iPhone: Safari → Κοινή χρήση → Προσθήκη στην οθόνη Αφετηρίας.');
+   }
+ });
+ if('serviceWorker' in navigator){
+   window.addEventListener('load',function(){
+     navigator.serviceWorker.register('./sw.js?v=20261008',{updateViaCache:'none'}).catch(function(){});
+   });
+ }
+})();
+</script></body><script>
 (function(){
  const p=new URLSearchParams(location.search);
  if(p.get('download')==='1'){
