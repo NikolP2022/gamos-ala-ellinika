@@ -5,7 +5,8 @@
         android:label="ΓΑΜΟΣ ΑΛΑ ΕΛΛΗΝΙΚΑ"
         android:icon="@drawable/app_icon"
         android:usesCleartextTraffic="false"
-        android:allowBackup="true">
+        android:allowBackup="false"
+        android:fullBackupContent="false">
         <activity android:name=".MainActivity" android:screenOrientation="portrait" android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
