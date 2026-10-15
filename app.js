@@ -454,13 +454,13 @@ function appointmentFields(kind,item){
   if(mystery){
     h+='<div class="form-section"><div class="fields">';
     h+=field("ΟΝΟΜΑ",f.name)+field("ΤΗΛΕΦΩΝΟ",f.phone)+field("ΜΥΣΤΗΡΙΟ",f.mystery)+dateField("ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ",f.mysteryDate)+dateField("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+timeField("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
-    h+='</div></div>';
+    h+='</div></div><div class="form-section"><label class="collab-label">📝 ΣΗΜΕΙΩΣΕΙΣ ΡΑΝΤΕΒΟΥ</label><textarea name="ΣΗΜΕΙΩΣΕΙΣ ΡΑΝΤΕΒΟΥ" class="appointment-notes" placeholder="Γράψε εδώ τις σημειώσεις για αυτό το ραντεβού...">'+esc(f.notes||"")+'</textarea></div>';
   }else{
     h+='<div class="form-section"><div class="fields">';
     h+=field("ΟΝΟΜΑ",f.name)+field("ΤΗΛΕΦΩΝΟ",f.phone);
     h+=field("ΒΙΝΤΕΟ □",f.video)+field("ΦΩΤΟΓΡΑΦΙΑ □",f.photo);
     h+=dateField("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",f.date)+timeField("ΩΡΑ ΡΑΝΤΕΒΟΥ",f.time);
-    h+='</div></div>';
+    h+='</div></div><div class="form-section"><label class="collab-label">📝 ΣΗΜΕΙΩΣΕΙΣ ΡΑΝΤΕΒΟΥ</label><textarea name="ΣΗΜΕΙΩΣΕΙΣ ΡΑΝΤΕΒΟΥ" class="appointment-notes" placeholder="Γράψε εδώ τις σημειώσεις για αυτό το ραντεβού...">'+esc(f.notes||"")+'</textarea></div>';
   }
   h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ</button></form>';
   $("detailMount").innerHTML=h;show("detailView");
@@ -488,7 +488,7 @@ function appointmentFields(kind,item){
   });
   $("apptListBack").onclick=()=>appointmentFolder(kind);
   $("apptForm").onsubmit=e=>{
-    e.preventDefault();const fd=new FormData(e.target);const read=name=>{const el=e.target.querySelector(`[name="${name}"]`);return String(el?el.value:(fd.get(name)||"")).trim()};const x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:read("ΟΝΟΜΑ"),phone:read("ΤΗΛΕΦΩΝΟ"),date:read("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ"),time:read("ΩΡΑ ΡΑΝΤΕΒΟΥ")};
+    e.preventDefault();const fd=new FormData(e.target);const read=name=>{const el=e.target.querySelector(`[name="${name}"]`);return String(el?el.value:(fd.get(name)||"")).trim()};const x={...(item||{}),id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),name:read("ΟΝΟΜΑ"),phone:read("ΤΗΛΕΦΩΝΟ"),date:read("ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ"),time:read("ΩΡΑ ΡΑΝΤΕΒΟΥ"),notes:read("ΣΗΜΕΙΩΣΕΙΣ ΡΑΝΤΕΒΟΥ")};
     if(!x.date||!x.time){alert("⚠️ ΕΠΕΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ ΩΡΑ ΡΑΝΤΕΒΟΥ.");return}
     const conflict=appointmentConflict(x,kind);
     if(conflict){
@@ -537,11 +537,16 @@ function appointmentFolder(kind){
   h+='<button class="primary big" id="newAppointment">＋ ΝΕΟ ΡΑΝΤΕΒΟΥ</button>';
   h+='<p class="empty-state">Κάθε ραντεβού δημιουργεί δικό του φάκελο.</p>';
   if(!arr.length)h+='<p class="empty-state">Δεν υπάρχουν ακόμη ραντεβού.</p>';
-  else h+='<div class="folder-list">'+arr.map((x,i)=>'<button type="button" class="menu-item" data-i="'+i+'">📁 '+esc(x.name||"Χωρίς όνομα")+' — '+esc(x.date||"Χωρίς ημερομηνία")+'</button>').join("")+'</div>';
+  else h+='<div class="folder-list">'+arr.map((x,i)=>'<div class="appointment-note-card"><button type="button" class="menu-item appointment-open" data-i="'+i+'">📁 '+esc(x.name||"Χωρίς όνομα")+' — '+esc(x.date||"Χωρίς ημερομηνία")+(x.time?' · '+esc(x.time):'')+'</button><label class="collab-label">📝 ΣΗΜΕΙΩΣΕΙΣ ΓΙΑ ΑΥΤΟ ΤΟ ΡΑΝΤΕΒΟΥ</label><textarea class="appointment-folder-notes" data-i="'+i+'" placeholder="Γράψε σημειώσεις για αυτό το ραντεβού...">'+esc(x.notes||"")+'</textarea></div>').join("")+'</div>';
   $("detailMount").innerHTML=h;show("detailView");
   $("appointmentFolderBack").onclick=()=>appointments();
   $("newAppointment").onclick=()=>appointmentFields(kind);
-  document.querySelectorAll("#detailMount .menu-item[data-i]").forEach(b=>b.onclick=()=>openAppointment(kind,Number(b.dataset.i)));
+  document.querySelectorAll("#detailMount .appointment-open[data-i]").forEach(b=>b.onclick=()=>openAppointment(kind,Number(b.dataset.i)));
+  document.querySelectorAll("#detailMount .appointment-folder-notes[data-i]").forEach(t=>{
+    const save=()=>{const idx=Number(t.dataset.i),current=getAppts(key);if(!current[idx])return;current[idx].notes=t.value;saveAppts(key,current);window.__lastSyncSnapshot="";if(typeof syncPush==="function")syncPush();};
+    t.addEventListener("change",save);
+    t.addEventListener("blur",save);
+  });
 }
 function openAppointment(kind,i){
   const key=kind==="mystery"?APPT_MYSTERY_KEY:APPT_PARTNER_KEY,arr=getAppts(key),x=arr[i];if(!x)return;
@@ -550,9 +555,10 @@ function openAppointment(kind,i){
   h+='<div class="form-section"><div class="detail-grid">';
   const rows=mystery?[["ΟΝΟΜΑ",x.name],["ΤΗΛΕΦΩΝΟ",x.phone],["ΜΥΣΤΗΡΙΟ",x.mystery],["ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ",x.mysteryDate],["ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",x.date],["ΩΡΑ ΡΑΝΤΕΒΟΥ",x.time]]:[["ΟΝΟΜΑ",x.name],["ΤΗΛΕΦΩΝΟ",x.phone],["ΒΙΝΤΕΟ",x.video?"ΝΑΙ":"ΟΧΙ"],["ΦΩΤΟΓΡΑΦΙΑ",x.photo?"ΝΑΙ":"ΟΧΙ"],["ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",x.date],["ΩΡΑ ΡΑΝΤΕΒΟΥ",x.time]];
   rows.forEach(r=>h+='<div class="detail"><b>'+r[0]+'</b><br>'+linkify(r[1]||"—")+'</div>');
-  h+='</div></div><button class="primary" id="editAppointment">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteAppointment">🗑️ ΔΙΑΓΡΑΦΗ</button>';
+  h+='</div></div><div class="form-section"><label class="collab-label">📝 ΣΗΜΕΙΩΣΕΙΣ ΡΑΝΤΕΒΟΥ</label><textarea id="appointmentDetailNotes" class="appointment-notes" placeholder="Γράψε σημειώσεις για αυτό το ραντεβού...">'+esc(x.notes||"")+'</textarea><button type="button" class="secondary" id="saveAppointmentNotes">💾 ΑΠΟΘΗΚΕΥΣΗ ΣΗΜΕΙΩΣΕΩΝ</button></div><button class="primary" id="editAppointment">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteAppointment">🗑️ ΔΙΑΓΡΑΦΗ</button>';
   $("detailMount").innerHTML=h;show("detailView");
   $("openApptBack").onclick=()=>appointmentFolder(kind);
+  $("saveAppointmentNotes").onclick=()=>{const latest=getAppts(key);const idx=latest.findIndex(y=>String(y.id)===String(x.id));if(idx>=0){latest[idx].notes=$("appointmentDetailNotes").value;saveAppts(key,latest);window.__lastSyncSnapshot="";if(typeof syncPush==="function")syncPush();alert("Οι σημειώσεις αποθηκεύτηκαν.");}};
   $("editAppointment").onclick=()=>appointmentFields(kind,x);
   $("deleteAppointment").onclick=()=>{if(confirm("Να διαγραφεί οριστικά αυτό το ραντεβού;")){arr.splice(i,1);saveAppts(key,arr);appointmentFolder(kind);renderDaily()}};
 }
