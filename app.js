@@ -4,14 +4,8 @@ weddingBaptism:["ΓΑΜΟΣ & ΒΑΠΤΙΣΗ",[["ΣΤΟΙΧΕΙΑ ΖΕΥΓΑΡΙ
 civilWedding:["ΠΟΛΙΤΙΚΟΣ ΓΑΜΟΣ",[["ΣΤΟΙΧΕΙΑ ΖΕΥΓΑΡΙΟΥ",["Όνομα Γαμπρού","Επίθετο Γαμπρού","Όνομα Νύφης","Επίθετο Νύφης","Τηλέφωνο επικοινωνίας","Email ζευγαριού","Περιοχή / Διεύθυνση"]],["ΣΤΟΙΧΕΙΑ ΜΥΣΤΗΡΙΟΥ ΠΟΛΙΤΙΚΟΥ ΓΑΜΟΥ",["Ημερομηνία μυστήριου","Ώρα Μυστήριου","Δημαρχείο","GPS Δημαρχείου","Περιοχή"]],["ΟΜΑΔΑ ΣΥΝΕΡΓΑΤΩΝ",["Φωτογραφία","Βίντεο"]],["ΟΙΚΟΝΟΜΙΚΑ",["Συνολικό Ποσό €","Προκαταβολή €","Υπόλοιπο Ποσό €","Υπόλοιπο Ποσού Με Την Παράδοση €","Εξοφλήθηκε ΝΑΙ ΟΧΙ"]],["ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ",["ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ"]],["ΣΗΜΕΙΩΣΕΙΣ",["ΣΗΜΕΙΩΣΕΙΣ"]]]],
 wedding:["ΓΑΜΟΣ",[["ΣΤΟΙΧΕΙΑ ΖΕΥΓΑΡΙΟΥ",["Όνομα Γαμπρού","Επίθετο Γαμπρού","Όνομα Νύφης","Επίθετο Νύφης","Τηλέφωνο επικοινωνίας","Email ζευγαριού","Περιοχή / Διεύθυνση","Προετοιμασία Νύφης □","Φωτογραφία Νύφης □","Βίντεο Νύφης □","GPS σπιτιού Νύφης","Προετοιμασία Γαμπρού □","Φωτογραφία Γαμπρού □","Βίντεο Γαμπρού □","GPS σπιτιού Γαμπρού"]],["ΣΤΟΙΧΕΙΑ ΜΥΣΤΗΡΙΟΥ ΓΑΜΟΥ",["Ημερομηνία μυστήριου","Ώρα Μυστήριου","Εκκλησία","Περιοχή","GPS Εκκλησίας","Δεξίωση ΝΑΙ ΟΧΙ","Κέντρο Δεξίωσης","GPS Δεξίωσης"]],["ΟΜΑΔΑ ΣΥΝΕΡΓΑΤΩΝ",["Φωτογραφία","Βίντεο"]],["ΟΙΚΟΝΟΜΙΚΑ",["Συνολικό Ποσό €","Προκαταβολή €","Υπόλοιπο Ποσό €","Υπόλοιπο Ποσού Με Την Παράδοση €","Εξοφλήθηκε ΝΑΙ ΟΧΙ"]],["ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ",["ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ"]],["ΣΗΜΕΙΩΣΕΙΣ",["ΣΗΜΕΙΩΣΕΙΣ"]]]]
 };
-schemas.nextDay=["NEXT DAY",[
- ["ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ",["Όνομα Γαμπρού","Επίθετο Γαμπρού","Όνομα Νύφης","Επίθετο Νύφης","Όνομα παιδιού","Τηλέφωνο επικοινωνίας","Email ζευγαριού"]],
- ["ΣΤΟΙΧΕΙΑ ΦΩΤΟΓΡΑΦΙΣΗΣ NEXT DAY",["Ημερομηνία NEXT DAY","Ώρα Μυστήριου","Περιοχή","Τοποθεσία / Διεύθυνση","GPS Τοποθεσίας"]],
- ["ΟΜΑΔΑ ΣΥΝΕΡΓΑΤΩΝ",["Φωτογραφία","Βίντεο"]],
- ["ΟΙΚΟΝΟΜΙΚΑ",["Συνολικό Ποσό €","Προκαταβολή €","Υπόλοιπο Ποσό €","Εξοφλήθηκε ΝΑΙ ΟΧΙ"]],
- ["ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ",["ΙΔΙΑΙΤΕΡΟΤΗΤΕΣ"]],
- ["ΣΗΜΕΙΩΣΕΙΣ",["ΣΗΜΕΙΩΣΕΣ"]]
-]];
+schemas.nextDay=["NEXT DAY",[["ΣΤΟΙΧΕΙΑ NEXT DAY",["Όνομα Γαμπρού","Όνομα Νύφης","Τηλέφωνο επικοινωνίας","Ημερομηνία NEXT DAY","Ώρα Συνάντησης","Τοποθεσία","GPS Τοποθεσίας","ΣΗΜΕΙΩΣΕΙΣ"]]]];
+
 const KEY="gamos_ala_ellinika_v3",DAYKEY="gamos_daily_schedule_v2";
 let data=JSON.parse(localStorage.getItem(KEY)||"[]"); if(!Array.isArray(data))data=[];
 const old=JSON.parse(localStorage.getItem("gamos_ala_ellinika_v2")||"[]"); if(!data.length&&Array.isArray(old))data=old;
@@ -139,7 +133,7 @@ if(!document.getElementById("clock24Style")){
 .clock24-close{width:100%;font-size:17px;background:#dcebe2}
 `;document.head.appendChild(st);
 }
-function form(type,item){const [title,sections]=schemas[type];const f=item?.fields||{};let h='<h2>'+title+'</h2><form id="mform">';sections.forEach(([s,fs])=>{h+='<div class="form-section"><h3>'+s+'</h3><div class="fields">'+fs.map(q=>field(q,f[q])).join("")+'</div></div>'});h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ</button></form>';$("formMount").innerHTML=h;show("formView");activateDateTimePickers($("formMount"));$("mform").onsubmit=e=>{e.preventDefault();const fd=new FormData(e.target),fields={};fd.forEach((v,k)=>fields[k]=v);e.target.querySelectorAll('input[type="checkbox"]').forEach(c=>fields[c.name]=c.checked?"ΝΑΙ":"ΟΧΙ");if(!fields["Ημερομηνία μυστήριου"]&&!fields["Ημερομηνία NEXT DAY"]){alert("Συμπλήρωσε την ημερομηνία.");return}
+function form(type,item){const [title,sections]=schemas[type];const f=item?.fields||{};let h='<h2>'+title+'</h2><form id="mform">';sections.forEach(([s,fs])=>{h+='<div class="form-section"><h3>'+s+'</h3><div class="fields">'+fs.map(q=>field(q,f[q])).join("")+'</div></div>'});h+='<button class="primary" type="submit">💾 ΑΠΟΘΗΚΕΥΣΗ</button></form>';$("formMount").innerHTML=h;show("formView");activateDateTimePickers($("formMount"));$("mform").onsubmit=e=>{e.preventDefault();const fd=new FormData(e.target),fields={};fd.forEach((v,k)=>fields[k]=v);e.target.querySelectorAll('input[type="checkbox"]').forEach(c=>fields[c.name]=c.checked?"ΝΑΙ":"ΟΧΙ");if(type==="nextDay"){if(!fields["Ημερομηνία NEXT DAY"]){alert("Συμπλήρωσε την ημερομηνία NEXT DAY.");return}}else if(!fields["Ημερομηνία μυστήριου"]){alert("Συμπλήρωσε την ημερομηνία του μυστηρίου.");return}
 const x={id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),type,date:fields["Ημερομηνία μυστήριου"]||fields["Ημερομηνία NEXT DAY"],fields};
 const sameMystery=data.find(a=>String(a.id)!==String(x.id)&&a.date===x.date&&a.fields&&a.fields["Ώρα Μυστήριου"]===x.fields["Ώρα Μυστήριου"]&&x.fields["Ώρα Μυστήριου"]);
 if(sameMystery)alert("⚠️ ΠΡΟΣΟΧΗ: Η ημερομηνία και ώρα είναι ήδη κρατημένες για άλλο μυστήριο.\n\nΗ νέα καταχώριση θα αποθηκευτεί κανονικά και θα εμφανιστεί επίσης στο Ημερήσιο Ημερολόγιο.");
