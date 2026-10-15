@@ -843,6 +843,9 @@ function syncScreen(){
 })();
 window.syncScreen=syncScreen;
 async function syncInitializeSharedWorkspace(){
+  if(syncBusy)return false;
+  syncBusy=true;
+  try{
   const code=SHARED_SYNC_CODE;
   const local=syncAllLocalStorage();
   localStorage.setItem(SYNC_TOKEN_KEY,code);
@@ -894,6 +897,7 @@ async function syncInitializeSharedWorkspace(){
   if(typeof renderDaily==="function")renderDaily();
   if(!$("calendarView").classList.contains("hidden"))calendar();
   return true;
+  }finally{syncBusy=false}
 }
 (function(){
   setTimeout(async()=>{
