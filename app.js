@@ -723,7 +723,10 @@ async function syncPull(){
     const j=await syncCall({action:"pull",code});
     syncApplyAll(j.data||{});syncSetRevision(j.revision||0);
     window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+    data=JSON.parse(localStorage.getItem(KEY)||"[]");
+    daily=syncParse(localStorage.getItem(DAYKEY)||"{}")||{};
     if(typeof renderDaily==="function")renderDaily();
+    if($("calendarView")&&!$("calendarView").classList.contains("hidden"))calendar();
     return true;
   }catch(e){console.warn("Cloud sync pull:",e.message);return false}
   finally{syncBusy=false}
