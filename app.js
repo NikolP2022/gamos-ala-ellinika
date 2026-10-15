@@ -302,7 +302,9 @@ renderDaily=function(){
     if(!rows)return;
     potentialDailyItems(day).forEach(x=>{
       const label=(x.time?x.time+" ":"")+"📅 ΠΙΘΑΝΗ ΚΡΑΤΗΣΗ — "+(x.name||"Ημερομηνία ενδιαφέροντος");
-      const target=x.time?rows.querySelector('[data-schedule-hour="'+x.time.slice(0,2)+':00"]'):null;
+      const potentialMinutes=x.time?timeToMinutes(x.time):null;
+      const potentialSlot=potentialMinutes===null?null:String(Math.floor(potentialMinutes/60)).padStart(2,"0")+":"+String(Math.floor((potentialMinutes%60)/15)*15).padStart(2,"0");
+      const target=potentialSlot?rows.querySelector('[data-schedule-hour="'+potentialSlot+'"]'):null;
       const row=target?target.closest(".schedule-row"):null;
       const item=document.createElement("button");
       item.type="button";item.className="schedule-potential-item";
