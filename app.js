@@ -502,14 +502,16 @@ function mysteryConflict(x){
 }
 function timeToMinutes(t){if(!/^\d{2}:\d{2}$/.test(String(t||"")))return null;const [h,m]=String(t).split(":").map(Number);return h*60+m}
 function formatAppt(x){return "📅 "+(x.date||"—")+"  🕐 "+(x.time||"—")+"\n📁 "+(x.name||"Ραντεβού")}
+// Ραντεβού δεν έχουν διάρκεια/λήξη. Μόνο ίδια ημερομηνία ΚΑΙ ίδια ακριβώς ώρα δημιουργεί προειδοποίηση.
 function appointmentConflict(x,kind){
-  const start=timeToMinutes(x.time); if(start===null||!x.date)return null;
-  const keys=[APPT_MYSTERY_KEY,APPT_PARTNER_KEY];
-  for(const key of keys){
+  const date=String(x.date||"").trim();
+  const time=String(x.time||"").trim().slice(0,5);
+  if(!date||!/^\d{2}:\d{2}$/.test(time))return null;
+  for(const key of [APPT_MYSTERY_KEY,APPT_PARTNER_KEY]){
     for(const y of getAppts(key)){
-      if(String(y.id)===String(x.id) || y.date!==x.date)continue;
-      const ys=timeToMinutes(y.time); if(ys===null)continue;
-      if(start === ys)return y;
+      if(String(y.id)===String(x.id))continue;
+      if(String(y.date||"").trim()!==date)continue;
+      if(String(y.time||"").trim().slice(0,5)===time)return y;
     }
   }
   return null;
