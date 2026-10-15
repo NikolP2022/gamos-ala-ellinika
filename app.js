@@ -537,7 +537,7 @@ function appointmentFolder(kind){
   h+='<button class="primary big" id="newAppointment">＋ ΝΕΟ ΡΑΝΤΕΒΟΥ</button>';
   h+='<p class="empty-state">Κάθε ραντεβού δημιουργεί δικό του φάκελο.</p>';
   if(!arr.length)h+='<p class="empty-state">Δεν υπάρχουν ακόμη ραντεβού.</p>';
-  else h+='<div class="folder-list">'+arr.map((x,i)=>'<div class="appointment-note-card"><button type="button" class="menu-item appointment-open" data-i="'+i+'">📁 '+esc(x.name||"Χωρίς όνομα")+' — '+esc(x.date||"Χωρίς ημερομηνία")+(x.time?' · '+esc(x.time):'')+'</button><label class="collab-label">📝 ΣΗΜΕΙΩΣΕΙΣ ΓΙΑ ΑΥΤΟ ΤΟ ΡΑΝΤΕΒΟΥ</label><textarea class="appointment-folder-notes" data-i="'+i+'" placeholder="Γράψε σημειώσεις για αυτό το ραντεβού...">'+esc(x.notes||"")+'</textarea></div>').join("")+'</div>';
+  else h+='<div class="folder-list">'+arr.map((x,i)=>'<div class="appointment-note-card"><button type="button" class="menu-item appointment-open" data-i="'+i+'">📁 '+esc(x.name||"Χωρίς όνομα")+' — '+esc(x.date||"Χωρίς ημερομηνία")+(x.time?' · '+esc(x.time):'')+'</button><label class="collab-label">📝 ΣΗΜΕΙΩΣΕΙΣ ΓΙΑ ΑΥΤΟ ΤΟ ΡΑΝΤΕΒΟΥ</label><textarea class="appointment-folder-notes" data-i="'+i+'" placeholder="Γράψε σημειώσεις για αυτό το ραντεβού...">'+esc(x.notes||"")+'</textarea><div class="appointment-note-status" aria-live="polite">📝 Οι σημειώσεις αποθηκεύονται αυτόματα.</div></div>').join("")+'</div>';
   $("detailMount").innerHTML=h;show("detailView");
   $("appointmentFolderBack").onclick=()=>appointments();
   $("newAppointment").onclick=()=>appointmentFields(kind);
