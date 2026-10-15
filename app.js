@@ -245,13 +245,14 @@ function renderDaily(){
   const date=$("scheduleDate").value,rows=$("scheduleRows");
   rows.innerHTML="";
   const events=getCalendarEvents(date);
-  for(let h=0;h<=23;h++){
-    const hour=String(h).padStart(2,"0")+":00";
+  for(let minutes=0;minutes<24*60;minutes+=15){
+    const hour=String(Math.floor(minutes/60)).padStart(2,"0")+":"+String(minutes%60).padStart(2,"0");
     const r=document.createElement("div");
     r.className="schedule-row";
+    r.dataset.scheduleHour=hour;
     r.innerHTML='<span>'+hour+'</span><div class="schedule-cell"><div class="schedule-events"></div><input type="text" autocomplete="off" placeholder="Γράψε εδώ για τις '+hour+'..."></div>';
     const box=r.querySelector(".schedule-events");
-    events.filter(e=>{const tm=timeToMinutes(e.time);return tm!==null&&tm>=h*60&&tm<h*60+60}).forEach(e=>{
+    events.filter(e=>{const tm=timeToMinutes(e.time);return tm!==null&&tm>=minutes&&tm<minutes+15}).forEach(e=>{
       const b=document.createElement("button");
       b.type="button";b.className="event daily-event";
       b.textContent=e.hasTime?(e.duration?e.label+" ("+e.time+"–"+String(Math.floor((timeToMinutes(e.time)+e.duration)/60)).padStart(2,"0")+":"+String((timeToMinutes(e.time)+e.duration)%60).padStart(2,"0")+")":e.label):"📌 "+e.label;
