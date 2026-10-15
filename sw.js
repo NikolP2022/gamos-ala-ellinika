@@ -1,5 +1,5 @@
-const CACHE='gamos-ala-ellinika-pwa-v23';
-const ASSETS=['./','./index.html','./styles.css?v=20261013','./app.js?v=20261023','./icon.svg','./manifest.webmanifest?v=20261013pwa'];
+const CACHE='gamos-ala-ellinika-pwa-v24';
+const ASSETS=['./','./index.html','./styles.css?v=20261024','./app.js?v=20261024','./icon.svg','./manifest.webmanifest?v=20261013pwa'];
 self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('gamos-ala-ellinika-pwa-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{
