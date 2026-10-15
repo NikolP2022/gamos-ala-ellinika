@@ -10,3 +10,7 @@
 .content-link{color:#1769aa;text-decoration:underline;font-weight:700;overflow-wrap:anywhere;cursor:pointer}.content-link:hover{color:#0d4777}.detail .content-link{display:inline-block;margin-top:3px}
 
 .appointment-note-card{background:#fffdf9;border:1px solid #ddcfbf;border-radius:14px;padding:12px;margin:12px 0}.appointment-note-card .appointment-open{width:100%;text-align:left;margin:0 0 12px}.appointment-folder-notes,.appointment-notes{display:block;width:100%;min-height:110px;padding:13px;border:1px solid #cfc1b2;border-radius:10px;background:#fff;font:16px Georgia,serif;resize:vertical}.appointment-note-card .collab-label{margin-top:4px}
+
+/* Επιβεβαίωση αποθήκευσης σημειώσεων ραντεβού */
+.appointment-note-status{font-size:14px;font-weight:700;line-height:1.45;padding:7px 3px;color:#42574b;overflow-wrap:anywhere}
+.appointment-folder-notes,.appointment-notes{min-height:110px}
