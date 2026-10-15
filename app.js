@@ -188,8 +188,8 @@ function getCalendarEvents(date){
     const d=dailyDate(x),t=dailyTime(x);
     if(d===date)add("mystery",x.id,d,t,eventTitle(x)+" — "+t,()=>detail(x),0);
   });
-  getAppts(APPT_MYSTERY_KEY).forEach((x,i)=>add("appointment-mystery",x.id,x.date,x.time,"📞 "+(x.name||"Ραντεβού Μυστηρίου")+" — "+x.time+(x.mystery?" — "+x.mystery:""),()=>openAppointment("mystery",i),60));
-  getAppts(APPT_PARTNER_KEY).forEach((x,i)=>add("appointment-partner",x.id,x.date,x.time,"👥 "+(x.name||"Ραντεβού Συνεργάτη")+" — "+x.time,()=>openAppointment("partner",i),60));
+  getAppts(APPT_MYSTERY_KEY).forEach((x,i)=>add("appointment-mystery",x.id,x.date,x.time,"📞 "+(x.name||"Ραντεβού Μυστηρίου")+" — "+x.time+(x.mystery?" — "+x.mystery:""),()=>openAppointment("mystery",i),0));
+  getAppts(APPT_PARTNER_KEY).forEach((x,i)=>add("appointment-partner",x.id,x.date,x.time,"👥 "+(x.name||"Ραντεβού Συνεργάτη")+" — "+x.time,()=>openAppointment("partner",i),0));
 
   const explicitKeys=[TASKS_KEY,DELIVERIES_KEY,DISKS_KEY,COLLAB_KEY,HAPPY_ORDERS_KEY];
   for(const key of explicitKeys){
@@ -479,7 +479,7 @@ function appointmentFields(kind,item){
     if(!x.date||!x.time){alert("⚠️ ΕΠΕΛΕΞΕ ΗΜΕΡΟΜΗΝΙΑ ΚΑΙ ΩΡΑ ΡΑΝΤΕΒΟΥ.");return}
     const conflict=appointmentConflict(x,kind);
     if(conflict){
-      alert("⚠️ ΥΠΑΡΧΕΙ ΗΔΗ ΔΕΣΜΕΥΜΕΝΟ ΡΑΝΤΕΒΟΥ\n\n"+formatAppt(conflict)+"\n\nΤο ραντεβού διαρκεί 1 ώρα. Δεν έγινε αποθήκευση για να αποφευχθεί διπλοκράτηση.");
+      alert("⚠️ ΥΠΑΡΧΕΙ ΗΔΗ ΔΕΣΜΕΥΜΕΝΟ ΡΑΝΤΕΒΟΥ\n\n"+formatAppt(conflict)+"\n\nΔεν έγινε αποθήκευση, επειδή υπάρχει ήδη ραντεβού στην ίδια ακριβώς ώρα.");
       return;
     }
     if(mystery){
@@ -509,7 +509,7 @@ function appointmentConflict(x,kind){
     for(const y of getAppts(key)){
       if(String(y.id)===String(x.id) || y.date!==x.date)continue;
       const ys=timeToMinutes(y.time); if(ys===null)continue;
-      if(start < ys+60 && start+60 > ys)return y;
+      if(start === ys)return y;
     }
   }
   return null;
