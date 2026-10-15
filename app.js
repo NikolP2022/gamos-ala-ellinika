@@ -648,7 +648,8 @@ const SYNC_TOKEN_KEY="gamos_sync_token_v2";
 const SYNC_REV_KEY="gamos_sync_revision_v2";
 let syncBusy=false,syncTimer=null,syncRevision=Number(localStorage.getItem(SYNC_REV_KEY)||0);
 
-function syncToken(){return (localStorage.getItem(SYNC_TOKEN_KEY)||"").toUpperCase().replace(/[^A-Z0-9]/g,"")}
+const SHARED_SYNC_CODE="GAMOSFOTO202610";
+function syncToken(){return (localStorage.getItem(SYNC_TOKEN_KEY)||SHARED_SYNC_CODE).toUpperCase().replace(/[^A-Z0-9]/g,"")}
 function syncAllLocalStorage(){
   const o={};
   for(let i=0;i<localStorage.length;i++){
@@ -838,13 +839,66 @@ function syncScreen(){
   };
 })();
 window.syncScreen=syncScreen;
+async function syncInitializeSharedWorkspace(){
+  const code=SHARED_SYNC_CODE;
+  const local=syncAllLocalStorage();
+  localStorage.setItem(SYNC_TOKEN_KEY,code);
+  const meaningful=Object.values(local).some(raw=>{
+    if(raw==null||raw==="")return false;
+    const value=syncParse(raw);
+    if(Array.isArray(value))return value.length>0;
+    if(value&&typeof value==="object")return Object.keys(value).length>0;
+    return value!==""&&value!==false&&value!==0;
+  });
+  let remote=null;
+  try{
+    remote=await syncCall({action:"pull",code});
+  }catch(pullError){
+    try{
+      const created=await syncCall({action:"create",code,data:local});
+      syncSetRevision(created.revision||1);
+      syncApplyAll(created.data||local);
+      window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+      if(typeof renderDaily==="function")renderDaily();
+      return true;
+    }catch(createError){
+      remote=await syncCall({action:"pull",code});
+    }
+  }
+  const remoteData=remote.data||{};
+  if(meaningful){
+    const merged=syncThreeWayData({},local,remoteData);
+    if(!syncEqual(merged,remoteData)){
+      try{
+        const saved=await syncCall({action:"push",code,data:merged,base_revision:Number(remote.revision||0)});
+        syncApplyAll(saved.data||merged);syncSetRevision(saved.revision||0);
+      }catch(pushError){
+        if(!pushError.syncResponse?.conflict)throw pushError;
+        const latest=pushError.syncResponse;
+        const mergedAgain=syncThreeWayData({},local,latest.data||{});
+        const saved=await syncCall({action:"push",code,data:mergedAgain,base_revision:Number(latest.revision||0)});
+        syncApplyAll(saved.data||mergedAgain);syncSetRevision(saved.revision||0);
+      }
+    }else{
+      syncApplyAll(remoteData);syncSetRevision(remote.revision||0);
+    }
+  }else{
+    syncApplyAll(remoteData);syncSetRevision(remote.revision||0);
+  }
+  window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
+  data=JSON.parse(localStorage.getItem(KEY)||"[]");
+  daily=syncParse(localStorage.getItem(DAYKEY)||"{}")||{};
+  if(typeof renderDaily==="function")renderDaily();
+  if(!$("calendarView").classList.contains("hidden"))calendar();
+  return true;
+}
 (function(){
   setTimeout(async()=>{
-    if(!syncToken())return;
-    await syncPull();
-    window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
-  },700);
-  syncTimer=setInterval(syncReconcile,3000);
+    try{
+      await syncInitializeSharedWorkspace();
+    }catch(e){console.warn("Αυτόματος κοινός συγχρονισμός:",e.message)}
+  },500);
+  syncTimer=setInterval(syncReconcile,1000);
   window.addEventListener("focus",()=>syncReconcile());
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncReconcile()});
 })();
