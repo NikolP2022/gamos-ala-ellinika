@@ -13,7 +13,16 @@ const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));
 function save(){localStorage.setItem(KEY,JSON.stringify(data));localStorage.removeItem("gamos_ala_ellinika_v2")}
 function show(id){document.querySelectorAll(".view").forEach(x=>x.classList.add("hidden"));const el=$(id);if(el)el.classList.remove("hidden");window.scrollTo(0,0)}
-function linkify(s){const safe=esc(s);return safe.replace(/(https?:\/\/[^\\s<]+)/g,'<a class="content-link" href="$1" target="_blank" rel="noopener noreferrer">🔗 $1</a>').replace(/\n/g,"<br>");}
+function linkify(s){
+  const safe=esc(String(s??""));
+  return safe.replace(/(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi,(raw)=>{
+    let url=raw,tail="";
+    while(/[.,;!?)]$/.test(url)){tail=url.slice(-1)+tail;url=url.slice(0,-1);}
+    const href=/^www\./i.test(url)?"https://"+url:url;
+    if(!/^https?:\/\//i.test(href))return raw+tail;
+    return '<a class="content-link" href="'+href+'" target="_blank" rel="noopener noreferrer">🔗 '+url+'</a>'+tail;
+  }).replace(/\n/g,"<br>");
+}
 function field(q,v=""){
   const low=String(q).toLocaleLowerCase("el");
   if(q.endsWith("□"))return '<div class="field check"><label><input type="checkbox" name="'+esc(q)+'" '+(v==="ΝΑΙ"?"checked":"")+'><span>'+esc(q.replace(" □",""))+'</span></label></div>';
@@ -540,7 +549,7 @@ function openAppointment(kind,i){
   let h='<button class="back" id="openApptBack">← '+(mystery?"ΥΠΟΨΗΦΙΑ ΜΥΣΤΗΡΙΑ":"ΥΠΟΨΗΦΙΟΙ ΣΥΝΕΡΓΑΤΕΣ")+'</button><h2>📁 '+esc(x.name||"Ραντεβού")+'</h2>';
   h+='<div class="form-section"><div class="detail-grid">';
   const rows=mystery?[["ΟΝΟΜΑ",x.name],["ΤΗΛΕΦΩΝΟ",x.phone],["ΜΥΣΤΗΡΙΟ",x.mystery],["ΗΜΕΡΟΜΗΝΙΑ ΜΥΣΤΗΡΙΟΥ",x.mysteryDate],["ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",x.date],["ΩΡΑ ΡΑΝΤΕΒΟΥ",x.time]]:[["ΟΝΟΜΑ",x.name],["ΤΗΛΕΦΩΝΟ",x.phone],["ΒΙΝΤΕΟ",x.video?"ΝΑΙ":"ΟΧΙ"],["ΦΩΤΟΓΡΑΦΙΑ",x.photo?"ΝΑΙ":"ΟΧΙ"],["ΗΜΕΡΟΜΗΝΙΑ ΡΑΝΤΕΒΟΥ",x.date],["ΩΡΑ ΡΑΝΤΕΒΟΥ",x.time]];
-  rows.forEach(r=>h+='<div class="detail"><b>'+r[0]+'</b><br>'+esc(r[1]||"—")+'</div>');
+  rows.forEach(r=>h+='<div class="detail"><b>'+r[0]+'</b><br>'+linkify(r[1]||"—")+'</div>');
   h+='</div></div><button class="primary" id="editAppointment">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteAppointment">🗑️ ΔΙΑΓΡΑΦΗ</button>';
   $("detailMount").innerHTML=h;show("detailView");
   $("openApptBack").onclick=()=>appointmentFolder(kind);
@@ -935,7 +944,7 @@ function potentialBookings(){
     h+='<button type="button" class="potential-card" data-id="'+esc(x.id)+'">';
     h+='<div class="potential-date">📅 '+esc(x.date||"Χωρίς ημερομηνία")+(x.time?' · 🕐 '+esc(x.time):"")+'</div>';
     h+='<div class="potential-name">'+esc(x.name||"Χωρίς όνομα")+'</div>';
-    if(x.notes)h+='<div class="potential-notes">'+esc(x.notes)+'</div>';
+    if(x.notes)h+='<div class="potential-notes">'+linkify(x.notes)+'</div>';
     h+='</button>';
   });
   h+='</div>';
