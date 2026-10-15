@@ -137,7 +137,7 @@ function form(type,item){const [title,sections]=schemas[type];const f=item?.fiel
 const x={id:item?.id||Date.now().toString(36)+Math.random().toString(36).slice(2),type,date:fields["Ημερομηνία μυστήριου"]||fields["Ημερομηνία NEXT DAY"],fields};
 const sameMystery=data.find(a=>String(a.id)!==String(x.id)&&a.date===x.date&&a.fields&&a.fields["Ώρα Μυστήριου"]===x.fields["Ώρα Μυστήριου"]&&x.fields["Ώρα Μυστήριου"]);
 if(sameMystery)alert("⚠️ ΠΡΟΣΟΧΗ: Η ημερομηνία και ώρα είναι ήδη κρατημένες για άλλο μυστήριο.\n\nΗ νέα καταχώριση θα αποθηκευτεί κανονικά και θα εμφανιστεί επίσης στο Ημερήσιο Ημερολόγιο.");
-if(item)data=data.map(a=>a.id===item.id?x:a);else data.push(x);save();window.__lastSyncSnapshot="";month=new Date(x.date+"T00:00:00");calendar();renderDaily();show("calendarView");if(typeof syncPush==="function")syncPush()}}
+if(item)data=data.map(a=>a.id===item.id?x:a);else data.push(x);save();window.__lastSyncSnapshot="";month=new Date(x.date+"T00:00:00");calendar();renderDaily();show("calendarView");if(typeof syncPushConfirmed==="function")syncPushConfirmed()}}
 function eventTitle(x){const f=x.fields;if(x.type==="nextDay")return "📸 NEXT DAY — "+[f["Όνομα Γαμπρού"],f["Όνομα Νύφης"],f["Όνομα παιδιού"]].filter(Boolean).join(" & ")||"📸 NEXT DAY";if(x.type==="baptism")return "🕊️ "+(f["Όνομα παιδιού"]||"Βάπτιση");if(x.type==="weddingBaptism")return "💍🕊️ "+[f["Όνομα Γαμπρού"],f["Όνομα Νύφης"]].filter(Boolean).join(" & ")||"Γάμος & Βάπτιση";return (x.type==="civilWedding"?"🏛️ ":"💍 ")+[f["Όνομα Γαμπρού"],f["Όνομα Νύφης"]].filter(Boolean).join(" & ")||schemas[x.type][0]}
 function calendar(){const y=month.getFullYear(),m=month.getMonth();$("monthTitle").textContent=new Intl.DateTimeFormat("el-GR",{month:"long",year:"numeric"}).format(month).toUpperCase();const g=$("calendar");g.innerHTML="";const first=(new Date(y,m,1).getDay()+6)%7,days=new Date(y,m+1,0).getDate();for(let i=0;i<first;i++)g.appendChild(document.createElement("div"));for(let d=1;d<=days;d++){const c=document.createElement("div");c.className="day";c.innerHTML="<b>"+d+"</b>";data.filter(x=>{const z=new Date(x.date+"T00:00:00");return z.getFullYear()===y&&z.getMonth()===m&&z.getDate()===d}).forEach(x=>{const b=document.createElement("button");b.className="event";b.type="button";b.textContent=eventTitle(x);b.onclick=()=>detail(x);c.appendChild(b)});g.appendChild(c)}}
 function detail(x){let h="<h2>"+schemas[x.type][0]+"</h2>";schemas[x.type][1].forEach(([s,fs])=>{h+='<div class="form-section"><h3>'+s+'</h3><div class="detail-grid">'+fs.map(q=>'<div class="detail"><b>'+q+'</b><br>'+linkify(x.fields[q]||"—")+'</div>').join("")+"</div></div>"});h+='<button class="primary" id="editBtn">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteBtn">🗑️ ΔΙΑΓΡΑΦΗ</button>';$("detailMount").innerHTML=h;show("detailView");$("editBtn").onclick=()=>form(x.type,x);$("deleteBtn").onclick=()=>{const ok=window.confirm("Να διαγραφεί οριστικά αυτό το μυστήριο;");if(!ok)return;const before=data.length;data=data.filter(a=>String(a.id)!==String(x.id));if(data.length===before){const legacy=JSON.parse(localStorage.getItem("gamos_ala_ellinika_v2")||"[]");data=Array.isArray(legacy)?legacy.filter(a=>String(a.id)!==String(x.id)):data}localStorage.setItem(KEY,JSON.stringify(data));localStorage.removeItem("gamos_ala_ellinika_v2");calendar();renderDaily();show("calendarView");setTimeout(()=>alert("Το μυστήριο διαγράφηκε."),50)}}
@@ -775,6 +775,9 @@ function syncSetRevision(n){
 }
 async function syncPull(){
   const code=syncToken();if(!code||syncBusy)return false;
+  // Never overwrite edits made locally since the last confirmed sync.
+  const localNow=JSON.stringify(syncAllLocalStorage());
+  if(!window.__lastSyncSnapshot||localNow!==window.__lastSyncSnapshot)return false;
   syncBusy=true;
   try{
     const j=await syncCall({action:"pull",code});
@@ -908,10 +911,10 @@ function syncScreen(){
   const nativeSet=Storage.prototype.setItem;
   Storage.prototype.setItem=function(k,v){
     nativeSet.call(this,k,v);
-    if(this!==localStorage||syncBusy||typeof syncPush!=="function")return;
+    if(this!==localStorage||typeof syncPushConfirmed!=="function")return;
     if(k===SYNC_TOKEN_KEY||k===SYNC_REV_KEY)return;
     clearTimeout(window.__syncSaveTimer);
-    window.__syncSaveTimer=setTimeout(()=>syncPush(),600);
+    window.__syncSaveTimer=setTimeout(()=>syncPushConfirmed(),700);
   };
 })();
 window.syncScreen=syncScreen;
