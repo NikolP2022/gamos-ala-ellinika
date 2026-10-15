@@ -561,7 +561,6 @@ function appointmentFolder(kind){
       if(status)status.textContent="💾 ΑΠΟΘΗΚΕΥΤΗΚΕ ΤΟΠΙΚΑ — ΣΥΓΧΡΟΝΙΣΜΟΣ…";
       clearTimeout(timer);timer=setTimeout(syncSave,500);
     });
-    t.addEventListener("change",()=>{clearTimeout(timer);syncSave()});
     t.addEventListener("blur",()=>{clearTimeout(timer);syncSave()});
   });
 }
