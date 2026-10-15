@@ -543,9 +543,26 @@ function appointmentFolder(kind){
   $("newAppointment").onclick=()=>appointmentFields(kind);
   document.querySelectorAll("#detailMount .appointment-open[data-i]").forEach(b=>b.onclick=()=>openAppointment(kind,Number(b.dataset.i)));
   document.querySelectorAll("#detailMount .appointment-folder-notes[data-i]").forEach(t=>{
-    const save=()=>{const idx=Number(t.dataset.i),current=getAppts(key);if(!current[idx])return;current[idx].notes=t.value;saveAppts(key,current);window.__lastSyncSnapshot="";if(typeof syncPush==="function")syncPush();};
-    t.addEventListener("change",save);
-    t.addEventListener("blur",save);
+    const card=t.closest(".appointment-note-card");
+    const status=card&&card.querySelector(".appointment-note-status");
+    let timer=null;
+    const saveLocal=()=>{
+      const idx=Number(t.dataset.i),current=getAppts(key);if(!current[idx])return false;
+      current[idx].notes=t.value;saveAppts(key,current);return true;
+    };
+    const syncSave=async()=>{
+      if(!saveLocal())return;
+      if(status)status.textContent="⏳ ΑΠΟΘΗΚΕΥΣΗ ΚΑΙ ΣΥΓΧΡΟΝΙΣΜΟΣ…";
+      const ok=await syncPushConfirmed();
+      if(status)status.textContent=ok?"✅ ΑΠΟΘΗΚΕΥΤΗΚΕ — ΕΝΗΜΕΡΩΘΗΚΑΝ ΟΙ ΣΥΣΚΕΥΕΣ":"⚠️ ΑΠΟΘΗΚΕΥΤΗΚΕ ΣΤΗ ΣΥΣΚΕΥΗ, ΑΛΛΑ Ο ΣΥΓΧΡΟΝΙΣΜΟΣ ΑΠΕΤΥΧΕ. ΠΑΤΗΣΕ ΞΑΝΑ ΕΚΤΟΣ ΠΕΔΙΟΥ.";
+    };
+    t.addEventListener("input",()=>{
+      saveLocal();
+      if(status)status.textContent="💾 ΑΠΟΘΗΚΕΥΤΗΚΕ ΤΟΠΙΚΑ — ΣΥΓΧΡΟΝΙΣΜΟΣ…";
+      clearTimeout(timer);timer=setTimeout(syncSave,500);
+    });
+    t.addEventListener("change",()=>{clearTimeout(timer);syncSave()});
+    t.addEventListener("blur",()=>{clearTimeout(timer);syncSave()});
   });
 }
 function openAppointment(kind,i){
@@ -558,7 +575,25 @@ function openAppointment(kind,i){
   h+='</div></div><div class="form-section"><label class="collab-label">📝 ΣΗΜΕΙΩΣΕΙΣ ΡΑΝΤΕΒΟΥ</label><textarea id="appointmentDetailNotes" class="appointment-notes" placeholder="Γράψε σημειώσεις για αυτό το ραντεβού...">'+esc(x.notes||"")+'</textarea><button type="button" class="secondary" id="saveAppointmentNotes">💾 ΑΠΟΘΗΚΕΥΣΗ ΣΗΜΕΙΩΣΕΩΝ</button></div><button class="primary" id="editAppointment">✏️ ΕΠΕΞΕΡΓΑΣΙΑ</button><button class="danger" id="deleteAppointment">🗑️ ΔΙΑΓΡΑΦΗ</button>';
   $("detailMount").innerHTML=h;show("detailView");
   $("openApptBack").onclick=()=>appointmentFolder(kind);
-  $("saveAppointmentNotes").onclick=()=>{const latest=getAppts(key);const idx=latest.findIndex(y=>String(y.id)===String(x.id));if(idx>=0){latest[idx].notes=$("appointmentDetailNotes").value;saveAppts(key,latest);window.__lastSyncSnapshot="";if(typeof syncPush==="function")syncPush();alert("Οι σημειώσεις αποθηκεύτηκαν.");}};
+  const notesInput=$("appointmentDetailNotes"),notesStatus=document.createElement("div");
+  notesStatus.className="appointment-note-status";notesStatus.setAttribute("aria-live","polite");notesStatus.textContent="📝 Οι σημειώσεις αποθηκεύονται αυτόματα.";
+  $("saveAppointmentNotes").insertAdjacentElement("afterend",notesStatus);
+  let notesTimer=null;
+  const saveDetailNotes=async()=>{
+    const latest=getAppts(key),idx=latest.findIndex(y=>String(y.id)===String(x.id));if(idx<0)return false;
+    latest[idx].notes=notesInput.value;saveAppts(key,latest);
+    notesStatus.textContent="⏳ ΑΠΟΘΗΚΕΥΣΗ ΚΑΙ ΣΥΓΧΡΟΝΙΣΜΟΣ…";
+    const ok=await syncPushConfirmed();
+    notesStatus.textContent=ok?"✅ ΑΠΟΘΗΚΕΥΤΗΚΕ — ΕΝΗΜΕΡΩΘΗΚΑΝ ΟΙ ΣΥΣΚΕΥΕΣ":"⚠️ ΑΠΟΘΗΚΕΥΤΗΚΕ ΣΤΗ ΣΥΣΚΕΥΗ, ΑΛΛΑ Ο ΣΥΓΧΡΟΝΙΣΜΟΣ ΑΠΕΤΥΧΕ. ΔΟΚΙΜΑΣΕ ΞΑΝΑ.";
+    return ok;
+  };
+  notesInput.addEventListener("input",()=>{
+    const latest=getAppts(key),idx=latest.findIndex(y=>String(y.id)===String(x.id));
+    if(idx>=0){latest[idx].notes=notesInput.value;saveAppts(key,latest);}
+    notesStatus.textContent="💾 ΑΠΟΘΗΚΕΥΤΗΚΕ ΤΟΠΙΚΑ — ΣΥΓΧΡΟΝΙΣΜΟΣ…";
+    clearTimeout(notesTimer);notesTimer=setTimeout(saveDetailNotes,500);
+  });
+  $("saveAppointmentNotes").onclick=async()=>{clearTimeout(notesTimer);const ok=await saveDetailNotes();if(ok)alert("✅ Οι σημειώσεις αποθηκεύτηκαν και συγχρονίστηκαν στις συσκευές.");else alert("⚠️ Οι σημειώσεις έμειναν αποθηκευμένες σε αυτή τη συσκευή, αλλά δεν επιβεβαιώθηκε ο συγχρονισμός. Έλεγξε τη σύνδεση και δοκίμασε ξανά.");};
   $("editAppointment").onclick=()=>appointmentFields(kind,x);
   $("deleteAppointment").onclick=()=>{if(confirm("Να διαγραφεί οριστικά αυτό το ραντεβού;")){arr.splice(i,1);saveAppts(key,arr);appointmentFolder(kind);renderDaily()}};
 }
@@ -756,13 +791,19 @@ async function syncPush(){
   const code=syncToken();if(!code||syncBusy)return false;
   syncBusy=true;
   try{
-    const base=window.__lastSyncSnapshot?JSON.parse(window.__lastSyncSnapshot):{};
-    const local=syncAllLocalStorage();
+    let base=window.__lastSyncSnapshot?JSON.parse(window.__lastSyncSnapshot):{};
+    let local=syncAllLocalStorage();
     let remote=await syncCall({action:"pull",code});
-    let merged=syncThreeWayData(base,local,remote.data||{});
-    for(let attempt=0;attempt<2;attempt++){
+    for(let attempt=0;attempt<6;attempt++){
+      const merged=syncThreeWayData(base,local,remote.data||{});
       try{
         const j=await syncCall({action:"push",code,data:merged,base_revision:Number(remote.revision||0)});
+        const latest=syncAllLocalStorage();
+        if(!syncEqual(latest,local)){
+          // Preserve edits typed while the network request was running.
+          base=local;local=latest;remote={data:j.data||merged,revision:j.revision||0};
+          continue;
+        }
         syncApplyAll(j.data||merged);syncSetRevision(j.revision||0);
         window.__lastSyncSnapshot=JSON.stringify(syncAllLocalStorage());
         if(typeof renderDaily==="function")renderDaily();
@@ -770,12 +811,20 @@ async function syncPush(){
       }catch(e){
         if(!e.syncResponse?.conflict)throw e;
         remote=e.syncResponse;
-        merged=syncThreeWayData(base,local,remote.data||{});
       }
     }
-    throw new Error("Η συσκευή άλλαξε ταυτόχρονα. Δοκίμασε ξανά.");
+    throw new Error("Οι αλλαγές συνεχίζονται ταυτόχρονα. Δοκίμασε ξανά.");
   }catch(e){console.warn("Cloud sync push:",e.message);return false}
   finally{syncBusy=false}
+}
+async function syncPushConfirmed(){
+  for(let attempt=0;attempt<20;attempt++){
+    if(syncBusy){await new Promise(resolve=>setTimeout(resolve,200));continue}
+    const ok=await syncPush();
+    if(ok)return true;
+    await new Promise(resolve=>setTimeout(resolve,250));
+  }
+  return false;
 }
 async function syncReconcile(){
   const code=syncToken();if(!code||syncBusy)return false;
@@ -926,7 +975,7 @@ async function syncInitializeSharedWorkspace(){
       await syncInitializeSharedWorkspace();
     }catch(e){console.warn("Αυτόματος κοινός συγχρονισμός:",e.message)}
   },500);
-  syncTimer=setInterval(syncReconcile,1000);
+  syncTimer=setInterval(syncReconcile,3000);
   window.addEventListener("focus",()=>syncReconcile());
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)syncReconcile()});
 })();
