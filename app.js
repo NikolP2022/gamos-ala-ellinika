@@ -592,12 +592,17 @@ function ensureAppointmentsMenu(){
 /* ΕΚΚΡΕΜΟΤΗΤΕΣ / ΠΑΡΑΔΟΣΕΙΣ / ΣΚΛΗΡΟΙ ΔΙΣΚΟΙ */
 const TASKS_KEY="gamos_pending_v1", DELIVERIES_KEY="gamos_deliveries_v1", DISKS_KEY="gamos_disks_v1";
 const TASK_CATS=["🔴 Επείγοντα","🟠 Αυτή την εβδομάδα","🟡 Αναμονή από πελάτη","📞 Τηλέφωνα","💰 Οικονομικές εκκρεμότητες","📸 Εκκρεμούν φωτογραφίες","🎥 Εκκρεμούν βίντεο","💿 Εκκρεμούν παραδόσεις"];
-const DELIVERY_CATS=["📸 Φωτογραφίες","🎥 Βίντεο","💿 USB","📦 Άλμπουμ","🖼️ Εκτυπώσεις","💍 Γάμοι","🕊️ Βαπτίσεις"];
+const DELIVERY_CATS=["💍 Γάμοι","🕊️ Βαπτίσεις"];
 const DISK_CATS=["Σκληρός Δίσκος 1","Σκληρός Δίσκος 2","Backup","Cloud / Online Backup","Τοποθεσία αρχείων","Ελεύθερος χώρος","Ημερομηνία τελευταίου backup"];
 function arrKey(k){const x=JSON.parse(localStorage.getItem(k)||"[]");return Array.isArray(x)?x:[]}
 function saveArr(k,x){localStorage.setItem(k,JSON.stringify(x))}
 function simpleFolders(title,cats,key,kind){
-  const arr=arrKey(key);
+  let arr=arrKey(key);
+  if(kind==="delivery"){
+    const removed=["📸 Φωτογραφίες","🎥 Βίντεο","💿 USB","📦 Άλμπουμ","🖼️ Εκτυπώσεις"];
+    const filtered=arr.filter(x=>!removed.includes(x.category));
+    if(filtered.length!==arr.length){saveArr(key,filtered);arr=filtered;}
+  }
   let h='<button class="back" id="simpleBack">← ΜΕΝΟΥ</button><h2>'+title+'</h2>';
   h+='<div class="folder-list">'+cats.map((cat,i)=>{
     const count=arr.filter(x=>x.category===cat).length;
