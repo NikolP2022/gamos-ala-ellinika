@@ -830,7 +830,9 @@ async function syncPushConfirmed(){
 async function syncReconcile(){
   const code=syncToken();if(!code||syncBusy)return false;
   const now=JSON.stringify(syncAllLocalStorage());
-  if(window.__lastSyncSnapshot&&now!==window.__lastSyncSnapshot)return await syncPush();
+  // If a local edit cleared the baseline, push/merge it instead of pulling
+  // the cloud copy and potentially overwriting the unsynced edit.
+  if(!window.__lastSyncSnapshot||now!==window.__lastSyncSnapshot)return await syncPush();
   return await syncPull();
 }
 function newSyncCode(){
