@@ -741,7 +741,7 @@ function syncThreeWayValue(base,local,remote){
       if(lc&&!rc){if(hl)out.push(lv);continue}
       if(rc&&!lc){if(hr)out.push(rv);continue}
       if(!lc&&!rc){if(hb)out.push(bv);continue}
-      if(hl&&hr)out.push(syncThreeWayValue(JSON.stringify(bv),JSON.stringify(lv),JSON.stringify(rv)) instanceof String?lv:lv);
+      if(hl&&hr){const mergedValue=syncThreeWayValue(JSON.stringify(bv),JSON.stringify(lv),JSON.stringify(rv));if(mergedValue!==undefined)out.push(syncParse(mergedValue));}
     }
     return JSON.stringify(out);
   }
